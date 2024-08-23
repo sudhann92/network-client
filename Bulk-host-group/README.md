@@ -43,7 +43,7 @@ The awx.awx collection must be invoked in the playbook in order for ansible to p
 The following command will invoke the playbook with the awx collection
 
 ```console
-ansible-playbook  Bulk-host-group/playbook/create-host-group-AAP.yml
+ansible-playbook  Bulk-host-group/playbook/create-host-group-AAP.yml --extra-vars "@variable.yaml"
 ```
 
 Otherwise it will look for the modules only in your base installation. If there are errors complaining about "couldn't resolve module/action" this is the most likely cause.
@@ -75,7 +75,7 @@ controller_inventory_name: "<Name of the inventory>"
 controller_host_device_name: "xxxx,yyy,zzzz" 
 controller_groups_name:
     - group_name: "<group name>"
-	  preserve_existing_hosts: false < by default this value is false if you would like to preserve the existing hosts for this group then change as "True" >
+	    preserve_existing_hosts: false <By default this value is false if you would like to preserve the existing hosts for this group then change as "True" >
       hosts: "aaaa,xxxx,yyyy,zzzz"
 ```
 
