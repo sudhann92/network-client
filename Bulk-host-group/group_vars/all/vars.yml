@@ -1,0 +1,5 @@
+---
+controller_validate_certs: false
+controller_username: "admin"
+controller_password: "12345"
+controller_hostname: "rhans8tw2.nwsg.psa"

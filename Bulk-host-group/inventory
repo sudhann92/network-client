@@ -1,0 +1,2 @@
+[AAP]
+localhost ansible_connection=local
