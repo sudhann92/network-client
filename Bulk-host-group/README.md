@@ -76,7 +76,7 @@ controller_host_device_name: "xxxx,yyy,zzzz"
 controller_groups_name:
     - group_name: "<group name>"
       preserve_existing_hosts: "<By default this value is 'false' if you would like to preserve the existing hosts for this group then change as "True" >
-      hosts: "aaaa,xxxx,yyyy,zzzz"
+      hosts: "aaaa,bbb,cccc,ddddd,xxxx,yyyy,zzzz"
 ```
 
 ## Licensing
