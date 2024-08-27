@@ -31,6 +31,3 @@
        vars:
          group_value: "{{ controller_groups_name.split(',') }}"
        when: controller_groups_name|length != '0'
-    
-
-        

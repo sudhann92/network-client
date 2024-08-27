@@ -31,20 +31,23 @@
       when: controller_host_device_name|length != '0'
       
 
-    - block:
-      - name: Include the group creation role
-        ansible.builtin.include_role:
-            name: group-creation
 
-      - name: calculate the number of host mapped to groups
-        ansible.builtin.set_fact:
-              Total_associated_hosts: |
-                {% set ns = namespace(total_hosts = 0) %}
-                {% for group in controller_groups_name %}
-                {% set ns.total_hosts = ns.total_hosts + group.hosts.split(',') | length %}
-                {% endfor %}
-                {{ ns.total_hosts }}
+    - name: Include the group creation role
+      ansible.builtin.include_role:
+          name: group-creation
       when: controller_groups_name| length != 0
+
+    - name: calculate the number of host mapped to groups
+      ansible.builtin.set_fact:
+            Total_associated_hosts: |
+              {% if controller_groups_name| length != 0 %}
+              {% set ns = namespace(total_hosts = 0) %}
+              {% for group in controller_groups_name %}
+              {% set ns.total_hosts = ns.total_hosts + group.hosts.split(',') | length %}
+              {% endfor %}
+              {{ ns.total_hosts }}
+              {% else %}0{% endif %}
+      
 
 
     - name: Articulate the Automated Time savings efforts
@@ -54,5 +57,5 @@
             Number_of_host_added: "{{controller_host_list|default([])|length}}"
             Number_of_group_created: "{{ controller_groups_name| length }}"
             Number_of_host_associated: "{{Total_associated_hosts[:-1]|default(0)}}"
-            Manual_time_efforts: "{{ (controller_host_list|default([])|length * 1 ) + (controller_groups_name| length * 1) + (Total_associated_hosts[:-1]|default(0) * 1) }}"
+            Manual_time_efforts_Mins: "{{ (controller_host_list|default([])|length * 1 ) + (controller_groups_name| length * 1) + (Total_associated_hosts[:-1]|int * 1) }}"
         aggregate: yes
