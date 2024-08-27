@@ -12,8 +12,8 @@
            # - controller_host_device_name|default('', true) != ''
            # - controller_groups_name|default('', true) != '' 
             - controller_inventory_name|default('', true) != ''
-          fail_msg: "controller_host_device_name ,controller_groups_name,controller_inventory_name should not be empty"
-          success_msg: " Variable 'controller_host_device_name','controller_groups_name' & controller_inventory_name passed value validation!"
+          fail_msg: "controller_inventory_name should not be empty"
+          success_msg: " Variable 'controller_inventory_name' passed value validation!"
 
 
     tasks:
