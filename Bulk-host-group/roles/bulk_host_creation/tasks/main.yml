@@ -1,6 +1,6 @@
 ---
 # Used the bulk_host_create module for add the multiple host in one shot to the inventory 
-- name: Create bulk host in {{ inventory }}
+- name: Create bulk host in {{ controller_inventory_name }}
   bulk_host_create:
     inventory: "{{ controller_inventory_name }}"
     hosts: "{{ host_value}}"
