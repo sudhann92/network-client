@@ -22,7 +22,7 @@
               name: host-deletion
        vars:
           host_value: "{{ controller_host_device_name.split(',') }}"
-       when: controller_host_device_name|length != '0'
+       when: controller_host_device_name|length != 0
 
 
      - name: Include the Group deletion role
@@ -30,4 +30,4 @@
              name: group-deletion
        vars:
          group_value: "{{ controller_groups_name.split(',') }}"
-       when: controller_groups_name|length != '0'
+       when: controller_groups_name|length != 0
