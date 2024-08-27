@@ -2,7 +2,7 @@
 controller_validate_certs: false
 controller_username: "admin"
 #controller_password: "12345"
-#ansible-vault encrypt_string "<password string to encrypt" --name '<string name of the variable>'
+#ansible-vault encrypt_string "<password string to encrypt>" --name '<string name of the variable>'
 controller_password: !vault |
           $ANSIBLE_VAULT;1.1;AES256
           65383634303665613738376662386565373165626665663736633934643838306261306436643639
