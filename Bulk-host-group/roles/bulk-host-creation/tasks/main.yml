@@ -1,4 +1,5 @@
 ---
+# Used the bulk_host_create module for add the multiple host in one shot to the inventory 
 - name: Create bulk host in {{ inventory }}
   bulk_host_create:
     inventory: "{{ controller_inventory_name }}"
@@ -9,8 +10,9 @@
     controller_host: "{{ controller_hostname | default(omit, true) }}"
     controller_config_file: "{{ controller_config_file | default(omit, true) }}"
     validate_certs: "{{ controller_validate_certs | default(omit) }}"
+  no_log: "{{ controller_group_secure_logging }}"
   register: __bulk_host_create
 
 - name: print the output of bulk host create
-  debug:
+  ansible.builtin.debug:
     msg: '{{ __bulk_host_create }}'

@@ -1,0 +1,36 @@
+---
+  - name: Delete the bulk host and Group in AAP controller
+    hosts: AAP
+    gather_facts: no
+    collections:
+       - awx.awx
+
+    pre_tasks:
+    - name: Checking the Controller Host/Groups/Inventory variable values
+      ansible.builtin.assert:
+          that:
+            # - controller_host_device_name|default('', true) != ''
+            # - controller_groups_name|default('', true) != '' 
+            - controller_inventory_name|default('', true) != ''
+          fail_msg: "controller_inventory_name should not be empty"
+          success_msg: " Variable 'controller_inventory_name' passed value validation!"
+
+
+     tasks:
+     - name: Include the Host deletion role
+       ansible.builtin.include_role:
+              name: host-deletion
+       vars:
+          host_value: "{{ controller_host_device_name.split(',') }}"
+       when: controller_host_device_name|length != '0'
+
+
+     - name: Include the Group deletion role
+       ansible.builtin.include_role:
+             name: group-deletion
+       vars:
+         group_value: "{{ controller_groups_name.split(',') }}"
+       when: controller_groups_name|length != '0'
+    
+
+        

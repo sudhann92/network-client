@@ -1,2 +1,3 @@
 ---
 # defaults file for host-creation
+controller_group_secure_logging: false

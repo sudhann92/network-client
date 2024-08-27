@@ -1,0 +1,4 @@
+---
+# defaults file for host-deletion
+controller_configuration_hosts_async_retries: "{{ controller_configuration_hosts_async_retries | default(30) }}"
+controller_configuration_hosts_async_delay: "{{controller_configuration_hosts_async_delay | default(1) }}"

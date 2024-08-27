@@ -1,5 +1,5 @@
 ---
-  - name: Create and delete the bulk host creation
+  - name: Create the bulk host and Group creation in AAP controller
     hosts: AAP
     gather_facts: no
     collections:
@@ -9,24 +9,50 @@
     - name: Checking the Controller Host/Groups/Inventory variable values
       ansible.builtin.assert:
           that:
-            - controller_host_device_name|default('', true) != ''
-            - controller_groups_name|default('', true) != '' 
+           # - controller_host_device_name|default('', true) != ''
+           # - controller_groups_name|default('', true) != '' 
             - controller_inventory_name|default('', true) != ''
           fail_msg: "controller_host_device_name ,controller_groups_name,controller_inventory_name should not be empty"
           success_msg: " Variable 'controller_host_device_name','controller_groups_name' & controller_inventory_name passed value validation!"
 
-    - name: Create the bulk host list as per standard dictonary value
-      ansible.builtin.set_fact: 
-          controller_host_list: '{{ controller_host_list|default([]) + [{"name":item,"enabled":true}] }}'
-      loop: "{{ controller_host_device_name.split(',') }}"
 
     tasks:
-    - name: Include the Bulk host creation role
-      ansible.builtin.include_role:
-          name: bulk-host-creation
-      vars:
-        host_value: "{{ controller_host_list }}"    
+    - block:
+      - name: Create the bulk host list as per standard dictonary value
+        ansible.builtin.set_fact: 
+            controller_host_list: '{{ controller_host_list|default([]) + [{"name":item,"enabled":true}] }}'
+        loop: "{{ controller_host_device_name.split(',') }}"
 
-    - name: Include the Bulk host creation role
-      ansible.builtin.include_role:
-          name: group-creation
+      - name: Include the Bulk host creation role
+        ansible.builtin.include_role:
+            name: bulk-host-creation
+        vars:
+          host_value: "{{ controller_host_list }}" 
+      when: controller_host_device_name|length != '0'
+      
+
+    - block:
+      - name: Include the group creation role
+        ansible.builtin.include_role:
+            name: group-creation
+
+      - name: calculate the number of host mapped to groups
+        ansible.builtin.set_fact:
+              Total_associated_hosts: |
+                {% set ns = namespace(total_hosts = 0) %}
+                {% for group in controller_groups_name %}
+                {% set ns.total_hosts = ns.total_hosts + group.hosts.split(',') | length %}
+                {% endfor %}
+                {{ ns.total_hosts }}
+      when: controller_groups_name| length != 0
+
+
+    - name: Articulate the Automated Time savings efforts
+      ansible.builtin.set_stats:
+        data:
+          description: "Create the bulk host and Group creation in AAP controller"
+            Number_of_host_added: "{{controller_host_list|default([])|length}}"
+            Number_of_group_created: "{{ controller_groups_name| length }}"
+            Number_of_host_associated: "{{Total_associated_hosts[:-1]|default(0)}}"
+            Manual_time_efforts: "{{ (controller_host_list|default([])|length * 1 ) + (controller_groups_name| length * 1) + (Total_associated_hosts[:-1]|default(0) * 1) }}"
+        aggregate: yes

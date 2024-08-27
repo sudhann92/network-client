@@ -62,21 +62,40 @@ You can also specify authentication by a combination of either:
 - `controller_hostname`, `controller_username`, `controller_password`
 - `controller_hostname`, `controller_oauthtoken`
 
-## Roles
-created two roles for this playbook
+## ROLES
+created four roles for this playbook
 1) bulk-host-creation
 2) group-creation
+3) Host-deletion 
+4) Group-deletion
 
-### Below is the Mandatory Extra variable input for this playbook 
+### Below is the  Extra variable input for Create-host-group-AAP playbook 
 
 ```yaml
 ---
 controller_inventory_name: "<Name of the inventory>"
-controller_host_device_name: "xxxx,yyy,zzzz" 
+controller_host_device_name: "xxxx,yyy,zzzz <name of the devices>"
 controller_groups_name:
     - group_name: "<group name>"
       preserve_existing_hosts: "<By default this value is 'false' if you would like to preserve the existing hosts for this group then change as "True" >
-      hosts: "aaaa,bbb,cccc,ddddd,xxxx,yyyy,zzzz"
+      hosts: "aaaa,bbb,cccc,ddddd,xxxx,yyyy,zzzz <name of the devices>"
+
 ```
 
-## Licensing
+### Below is the Extra variable input for Delete-host-group-AAP playbook
+
+```yaml
+controller_inventory_name: "<Name of the inventory>"
+controller_host_device_name: "<Name of the device>"
+controller_groups_name: "<Name of the group>"
+```
+
+## Example:
+
+```yaml
+
+controller_inventory_name: "Tuas inventory"
+controller_host_device_name: "switch_name_1,switch_name_2,switch_name_3"
+controller_groups_name: "group_name_1,group_name_2"
+controller_state: "absent"
+```
