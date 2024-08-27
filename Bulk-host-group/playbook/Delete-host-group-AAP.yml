@@ -19,7 +19,7 @@
      tasks:
      - name: Include the Host deletion role
        ansible.builtin.include_role:
-              name: host-deletion
+              name: host_deletion
        vars:
           host_value: "{{ controller_host_device_name.split(',') }}"
        when: controller_host_device_name|length != 0
@@ -27,7 +27,7 @@
 
      - name: Include the Group deletion role
        ansible.builtin.include_role:
-             name: group-deletion
+             name: group_deletion
        vars:
          group_value: "{{ controller_groups_name.split(',') }}"
        when: controller_groups_name|length != 0

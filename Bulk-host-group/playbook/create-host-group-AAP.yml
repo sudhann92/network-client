@@ -25,7 +25,7 @@
 
       - name: Include the Bulk host creation role
         ansible.builtin.include_role:
-          name: bulk-host-creation
+          name: bulk_host_creation
         vars:
           host_value: "{{ controller_host_list }}" 
       when: controller_host_device_name|length != 0
@@ -34,7 +34,7 @@
 
     - name: Include the group creation role
       ansible.builtin.include_role:
-        name: group-creation
+        name: group_creation
       when: controller_groups_name| length != 0
 
     - name: calculate the number of host mapped to groups
