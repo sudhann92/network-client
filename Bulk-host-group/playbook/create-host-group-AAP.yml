@@ -25,7 +25,7 @@
 
       - name: Include the Bulk host creation role
         ansible.builtin.include_role:
-          name: ../roles/bulk_host_creation
+          name: bulk_host_creation
         vars:
           host_value: "{{ controller_host_list }}" 
       when: controller_host_device_name|length != 0
