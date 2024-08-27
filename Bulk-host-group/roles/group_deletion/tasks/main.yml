@@ -1,7 +1,7 @@
 ---
 # Delete the group in controller node by using awx.awx.group colletion module and used the loop to get the multiple group and create in the single inventory
 - name: Add controller group  
-  group:
+  awx.awx.group:
     name:                           "{{ controller_groups_name_item | mandatory }}"
     # new_name:                       "{{ controller_groups_name_item.new_name | default(omit, true) }}"
     # description:                    "{{ controller_groups_name_item.description | default(omit, true) }}"

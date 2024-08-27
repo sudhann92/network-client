@@ -1,7 +1,7 @@
 ---
 # tasks file for host-deletion
 - name: Host Controller Deletion
-  host:
+  awx.awx.host:
     name: "{{ __controller_host | mandatory }}"
     inventory: "{{ controller_inventory_name | mandatory }}"
     state: "{{controller_state }}"   
