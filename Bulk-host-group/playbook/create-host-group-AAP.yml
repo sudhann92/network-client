@@ -21,7 +21,7 @@
       - name: Create the bulk host list as per standard dictonary value
         ansible.builtin.set_fact: 
             controller_host_list: '{{ controller_host_list|default([]) + [{"name":item,"enabled":true}] }}'
-        loop: "{{ controller_host_device_name.split(',') }}"
+        loop: "{{ controller_host_device_name.strip().split(',') }}"
 
       - name: Include the Bulk host creation role
         ansible.builtin.include_role:
@@ -46,7 +46,6 @@
               {% endfor %}
               {{ ns.total_hosts }}
       
-
 
     - name: Metadata Manual Time efforts
       ansible.builtin.set_stats:

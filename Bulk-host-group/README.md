@@ -82,6 +82,32 @@ controller_groups_name:
 
 ```
 
+## Example
+
+``` yaml
+---
+controller_inventory_name: "Demo_Inventory"
+controller_groups_name:
+              - group_name: "agv_access"
+                hosts: "switch_name_1,switch_name_2"
+              - group_name: "refer_av"
+                hosts: "switch_name_3,switch_name_4"
+```
+``` yaml
+---
+controller_inventory_name: "Demo_Inventory"
+controller_groups_name: []
+```
+
+``` yaml
+---
+controller_inventory_name: "Demo_Inventory"
+controller_groups_name:
+              - group_name: "agv_access"
+                hosts: "switch_name_1,switch_name_2"
+```                
+
+
 ### Below is the Extra variable input for Delete-host-group-AAP playbook
 
 ```yaml

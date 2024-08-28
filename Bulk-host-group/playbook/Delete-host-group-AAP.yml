@@ -21,7 +21,7 @@
        ansible.builtin.include_role:
               name: host_deletion
        vars:
-          host_value: "{{ controller_host_device_name.split(',') }}"
+          host_value: "{{ controller_host_device_name.strip().split(',') }}"
        when: controller_host_device_name|length != 0
 
 
@@ -29,5 +29,16 @@
        ansible.builtin.include_role:
              name: group_deletion
        vars:
-         group_value: "{{ controller_groups_name.split(',') }}"
+         group_value: "{{ controller_groups_name.strip().split(',') }}"
        when: controller_groups_name|length != 0
+
+  
+    - name: Metadata Manual Time efforts
+      ansible.builtin.set_stats:
+        data:
+          metadata:
+            description: "Create the bulk host and Group creation in AAP controller"
+            Number_of_host_deleted: "{{host_value|default([])|length}}"
+            Number_of_group_deleted: "{{ group_value| default([]) length }}"
+            Manual_time_efforts_Mins: "{{ (host_value|default([])|length * 1 ) + (group_value| length * 1) }}"
+        aggregate: no
