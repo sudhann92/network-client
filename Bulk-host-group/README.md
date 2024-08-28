@@ -87,6 +87,7 @@ controller_groups_name:
 ``` yaml
 ---
 controller_inventory_name: "Demo_Inventory"
+controller_host_device_name: "switch_name_1,switch_name_2,switch_name_3,switch_name_4"
 controller_groups_name:
               - group_name: "agv_access"
                 hosts: "switch_name_1,switch_name_2"
@@ -96,12 +97,14 @@ controller_groups_name:
 ``` yaml
 ---
 controller_inventory_name: "Demo_Inventory"
+controller_host_device_name: "switch_name_1,switch_name_2"
 controller_groups_name: []
 ```
 
 ``` yaml
 ---
 controller_inventory_name: "Demo_Inventory"
+controller_host_device_name: "switch_name_1,switch_name_2"
 controller_groups_name:
               - group_name: "agv_access"
                 hosts: "switch_name_1,switch_name_2"
