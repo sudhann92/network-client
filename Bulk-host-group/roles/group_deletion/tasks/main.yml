@@ -3,9 +3,9 @@
 - name: Add controller group  
   awx.awx.group:
     name:                           "{{ controller_groups_name_item | mandatory }}"
+    inventory:                      "{{ controller_inventory_name | mandatory }}"    
     # new_name:                       "{{ controller_groups_name_item.new_name | default(omit, true) }}"
     # description:                    "{{ controller_groups_name_item.description | default(omit, true) }}"
-    inventory:                      "{{ controller_inventory_name | mandatory }}"
     # variables:                      "{{ controller_groups_name_item.variables | default(omit, true) | regex_replace('[ ]{2,}', '') }}"
     # hosts:                          "{{ (controller_groups_name_item.hosts).split(',') | default(omit, true) }}"
     # children:                       "{{ controller_groups_name_item.children | default(omit, true) }}"

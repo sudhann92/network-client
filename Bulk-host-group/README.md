@@ -98,4 +98,5 @@ controller_inventory_name: "Tuas inventory"
 controller_host_device_name: "switch_name_1,switch_name_2,switch_name_3"
 controller_groups_name: "group_name_1,group_name_2"
 controller_state: "absent"
+
 ```
