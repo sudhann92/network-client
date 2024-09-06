@@ -1,0 +1,10 @@
+[cisco_ios]
+localhost ansible_connection=local
+
+[cisco_ios:vars]
+ansible_ssh_user=singtel_rw
+ansible_ssh_pass=Cisc0123
+#ansible_network_os=ios
+#ansible_connection=network_cli
+
+[hauwai_os]

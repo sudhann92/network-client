@@ -1,0 +1,34 @@
+---
+  - name: Execute show ip access-list command for {{ acl_name }} list
+    cisco.ios.ios_command:
+      commands:
+        - show ip access-lists {{ acl_name }}
+    register: _After_show_acl_desired_value
+    ignore_errors: yes
+
+
+  - name: Create the text file with before and After ACL_rule data
+    copy:
+      dest: "{{tower_job_id}}_ACL_report.txt"
+      content: "{{report_generation_value}}"
+    delegate_to: local
+    run_once: true
+
+
+  - name: Send email to RE to manually verify from their end
+    community.general.mail:
+          host: <smtp hostname>
+          port: 25
+          subject: "New_ACL_RULE_added_Report_{{change_number}}"
+          subtype: html
+          body: "{{_email_body_message }}"
+          to: "{{_email_address_to}}" #"attsawc1@globalpsa.com"
+          from: "noreply@ansible.psa"
+          cc: "{{_email_address_cc}}"
+          attach: "{{tower_job_id}}_ACL_report.txt"
+    delegate_to: localhost
+    run_once: true
+
+
+
+

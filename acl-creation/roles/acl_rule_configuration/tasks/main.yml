@@ -1,0 +1,13 @@
+---
+# tasks file for acl_configuration
+
+- import_tasks: preflight.yml
+
+- import_tasks: acl_creation.yml
+  when: config_type == "addition"
+
+- import_tasks: acl_deletion.yml
+  when: config_type == "deletion"
+
+- import_tasks: acl_post_check.yml
+

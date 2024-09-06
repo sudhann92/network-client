@@ -1,0 +1,58 @@
+---
+- name: Checking the host and group creation in ACL {{ tower_job_template_name }}
+  hosts: localhost
+  gather_facts: false
+  collections:
+    - awx.awx
+
+  tasks:
+  - name: verify the group attached to the {{tower_inventory_name}}
+    ansible.builtin.assert:
+      that:
+       - __acl_name|default('', true) != ''
+       - __acl_rule|default('', true) != ''
+       - __group_name|default('', true) != ''
+       - __host_name|default('', true) != ''
+      fail_msg: "_group_name, __acl_name, __acl_rule, __host_name are empty Kindly enter appropirate value"
+      success_msg: "All Assert got verified"
+
+  - block:
+    - name: launch the job incase the group not available in the {{tower_inventory_name}}
+      awx.awx.job_launch:
+        job_template:
+        extra_vars:
+          controller_inventory_name: "{{tower_inventory_name}}"
+          controller_host_device_name: "{{__host_name}}"
+          controller_groups_name:
+                  - group_name: "{{__group_name}}"
+                    hosts: "{{__host_name}}"              
+        job_type: run
+        controller_username: "{{ controller_username | default(omit, true) }}"
+        controller_password: "{{ controller_password | default(omit, true) }}"
+        controller_oauthtoken: "{{ controller_oauthtoken | default(omit, true) }}"
+        controller_host: "{{ controller_hostname | default(omit, true) }}"
+        controller_config_file: "{{ controller_config_file | default(omit, true) }}"
+        validate_certs: "{{ controller_validate_certs | default(omit) }}"
+      register: host_group_creation_job
+      
+      
+    - name: Check the Job status
+      awx.awx.job_wait:
+        job_id: "{{ host_group_creation_job.id }}"
+        timeout: 100
+
+    - name: verify the group got created and mapped with inventory
+       ansible.builtin.assert:
+       that:
+         - __group_name in group_names
+         - group_names[__group_name] | length != 0
+    fail_msg: "group name and host not properly addded kindly check manually stop the playbook over here"
+    success_msg: "group name and host are added properly with this {{tower_inventory_name}}" hence proceeding ACL creation
+
+    - ansible.builtin.debug:
+        msg: >-
+          "The name of the group attached in this template {{group_names}}"
+          "the name of the host attached with this {{group_names}} {{group_names[0]}}"
+
+    when: __group_name not in group_names and group_names[__group_name]|length == 0
+

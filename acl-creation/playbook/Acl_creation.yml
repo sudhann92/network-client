@@ -1,0 +1,55 @@
+
+---
+- name: Add dynamic hosts and assign to groups
+  hosts: localhost
+  gather_facts: no
+
+  tasks:
+## Verifying the input value should not be empty pre-checking task
+    - name: Assert verfication of input variables
+      ansible.builtin.assert:
+      that:
+       - acl_name|default('', true) != ''
+       - acl_rule|default('', true) != ''
+       - dynamic_host |default('', true) != ''
+       - dynamic_group|default('', true) != ''
+       - config_type|default('', true) != ''
+      fail_msg: "dynamic_host, acl_name, acl_rule, dynamic_group,config_type are empty Kindly enter appropirate value"
+      success_msg: "All Assert got verified"
+
+## Dynamically adding the host and creating the group inside in the playbook itself
+    - name: Add host to inventory dynamically
+      ansible.builtin.add_host:
+        name: "{{ __hosts_value }}"
+        groups: "{{ dynamic_group }}"
+        ansible_connection: "network_cli"
+        loop: "{{ dynamic_hosts.strip().split('\n') }}"
+        loop_control:
+           loop_var: __hosts_value
+      when: dynamic_host is defined and dynamic_group is defined
+
+## Using the above host as input and run the ACL rule configuration for the devices 
+- name: Check and Apply ACL Rules on Multiple Switches
+  hosts: "{{dynamic_group}}"
+  gather_facts: false
+  collections:
+       - cisco.ios
+  vars:
+    acl_name: "MY_ACL"
+
+  tasks:
+## Calling the rule for acl rule configuration both creation and deletion based on condition
+## rule will get called inside in playbook
+    - name: Include the ACL rule for creation
+      ansible.builtin.include_rule:
+          name: acl_rule_configuration
+      when: config_type == "addition"
+      tags:
+        - acl_rule_creation
+
+    - name: Include the ACL rule for creation
+      ansible.builtin.include_rule:
+          name: acl_rule_configuration
+      when: config_type == "deletion"
+      tags:
+        - acl_rule_deletion

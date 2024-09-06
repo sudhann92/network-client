@@ -1,0 +1,44 @@
+---
+  - name: Check the reachability of the devices 
+    wait_for:
+      host: "{{ inventory_hostname }}"
+      port: 22
+      delay: 5
+      timeout: 5
+    delegate_to: localhost
+    register: ping_status
+    ignore_errors: yes
+
+
+  - name: Execute show ip access-list command for {{ acl_name }} list
+    cisco.ios.ios_command:
+      commands:
+        - show ip access-lists {{ acl_name }}
+    register: show_acl_desired_value
+    ignore_errors: yes
+
+  - name: Set ACL type variable based on command output
+    set_fact:
+      acl_type: >-
+        {% if show_acl_desired_value.stdout|length != 0 %}
+        {% if 'extended' in show_acl_desired_value.stdout[0]|lower %}
+        extended
+        {% elif 'standard' in show_acl_desired_value.stdout[0]|lower %}
+        standard
+        {% else %}
+        not_found
+        {% else %}
+        Acl_not_configured
+        {% endif %}
+
+  - name: Taking backup current config of {{ inventory_hostname }}
+    cisco.ios.ios_config:
+      backup: yes
+      backup_options:
+        filename: "/tmp/old_config_{{ inventory_hostname }}.txt"
+    register: initial_config
+
+
+  - name: Debug ACL type
+    debug:
+      msg: "ACL Type for {{ inventory_hostname }}: {{ acl_type }}"
