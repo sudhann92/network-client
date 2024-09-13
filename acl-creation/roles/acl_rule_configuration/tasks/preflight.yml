@@ -4,7 +4,7 @@
       host: "{{ inventory_hostname }}"
       port: 22
       delay: 5
-      timeout: 5
+      timeout: 10
     delegate_to: localhost
     register: ping_status
     ignore_errors: yes
@@ -14,19 +14,20 @@
     cisco.ios.ios_command:
       commands:
         - show ip access-lists {{ acl_name }}
-    register: show_acl_desired_value
+    register: _before_show_acl_desired_value
     ignore_errors: yes
 
   - name: Set ACL type variable based on command output
     set_fact:
       acl_type: >-
-        {% if show_acl_desired_value.stdout|length != 0 %}
-        {% if 'extended' in show_acl_desired_value.stdout[0]|lower %}
+        {% if _before_show_acl_desired_value.stdout|length != 0 %}
+        {% if 'extended' in _before_show_acl_desired_value.stdout[0]|lower %}
         extended
-        {% elif 'standard' in show_acl_desired_value.stdout[0]|lower %}
+        {% elif 'standard' in _before_show_acl_desired_value.stdout[0]|lower %}
         standard
         {% else %}
         not_found
+        {% endif %}
         {% else %}
         Acl_not_configured
         {% endif %}
@@ -42,3 +43,25 @@
   - name: Debug ACL type
     debug:
       msg: "ACL Type for {{ inventory_hostname }}: {{ acl_type }}"
+     when: debug_type|bool
+
+
+  - name: Extract lines with 'deny' and 'any'
+    set_fact:
+        deny_matched_lines: "{{ _before_show_acl_desired_value.stdout.splitlines() | select('search', 'deny.*any') | list }}"
+
+
+  - name: Display the deny matches line 
+    debug:
+        msg: "{{ deny_matched_lines }}"
+     when: debug_type|bool
+
+
+- name: Remove existing ACL rules from the new given list
+  ansible.builtin.set_fact:
+    unique_new_acl_rules: "{{ new_acl_rule.splitlines() | difference(_before_show_acl_desired_value.stdout.splitlines()) }}"
+  
+- name: New Unique rule going to apply for this switches
+  anisble.builtin.debug:
+        msg: "{{unique_new_acl_rules}}"
+  when: debug_type|bool

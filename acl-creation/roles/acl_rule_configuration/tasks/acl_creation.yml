@@ -2,10 +2,10 @@
   - block:
     - name: Create a single list with set of ACL Extended rules
       ansible.builtin.set_fact:
-      __extended_acl_rule: "{{__extended_acl_rule + [__extended_acl_rule] }}"
-      loop: "{{ acl_rules.strip().split('\n') }}"
-      loop_control:
-          loop_var: __extended_acl_rule
+        __extended_acl_rule: "{{unique_new_acl_rules}}"
+      # loop: "{{ unique_new_acl_rules }}"
+      # loop_control:
+      #     loop_var: __extended_acl_rule
           
     - name: Apply Extended ACL if type is extended
       cisco.ios.ios_config:
@@ -15,16 +15,36 @@
         before:
           - "show access-lists {{ acl_name }}"
         match: none
-    when: acl_type == 'extended' and not ping_status.failed 
+      register: _applied_config
+  
+    - name: Taking new backup after applied ACL rule
+      cisco.ios.ios_config:
+        backup: yes
+        backup_options:
+          filename: "/tmp/new_config_{{ inventory_hostname }}.txt"
+      register: initial_config
+
+    - name: Compare the old config and new config 
+      ansible.builtin.shell:
+        command: "diff /tmp/old_config_{{ inventory_hostname }}.txt /tmp/new_config_{{ inventory_hostname }}.txt"
+      register: _show_difference
+
+    - name: Display the difference between configuration {{inventory_hostname }}
+      ansible.builtin.debug:
+        msg: >-
+            "Differences for {{ inventory_hostname}}"
+            "{{ _show_difference.stdout_lines| default('No differences found.') }}"
+      ignore_errors: yes
+    when: acl_type == 'extended' and not ping_status.failed and unique_new_acl_rules | length > 0
 
 
   - block:
     - name: Create a single list with set of ACL Standard rules 
       ansible.builtin.set_fact:
-      __standard_acl_rule: "{{__standard_acl_rule + [__standard_acl_rule] }}"
-      loop: "{{ acl_rules.strip().split('\n') }}"
-      loop_control:
-          loop_var: __standard_acl_rule
+        __standard_acl_rule: "{{unique_new_acl_rules}}"
+      # loop: "{{ unique_new_acl_rules }}"
+      # loop_control:
+      #     loop_var: __standard_acl_rule
 
     - name: Apply Standard ACL if type is standard
       cisco.ios.ios_config:
@@ -34,28 +54,25 @@
         before:
           - "show access-lists {{ acl_name }}"
         match: none
-    when: acl_type == 'standard' and not ping_status.failed 
+      register: _applied_config
 
-  - name: Taking new backup after applied ACL rule
-    cisco.ios.ios_config:
-      backup: yes
-      backup_options:
-        filename: "/tmp/new_config_{{ inventory_hostname }}.txt"
-    register: initial_config
+    - name: Taking new backup after applied ACL rule
+      cisco.ios.ios_config:
+        backup: yes
+        backup_options:
+          filename: "/tmp/new_config_{{ inventory_hostname }}.txt"
+      register: initial_config
 
-  - name: Compare the old config and new config 
-    ansible.builtin.shell:
-      command: "diff /tmp/old_config_{{ inventory_hostname }}.txt /tmp/new_config_{{ inventory_hostname }}.txt"
-    register: _show_difference
+    - name: Compare the old config and new config 
+      ansible.builtin.shell:
+        command: "diff /tmp/old_config_{{ inventory_hostname }}.txt /tmp/new_config_{{ inventory_hostname }}.txt"
+      register: _show_difference
 
-  - name: Display the difference between configuration {{inventory_hostname }}
-    ansible.builtin.debug:
-      msg: >-
-          "Differences for {{ inventory_hostname}}"
-          "{{ _show_difference.stdout_lines| default('No differences found.') }}"
-    ignore_errors: yes
-
-  - name: Fail if ACL not found
-    fail:
-      msg: "ACL {{ acl_name }} not found on {{ inventory_hostname }}"
-    when: acl_type == 'not_found' and acl_type == 'Acl_not_configured'
+    - name: Display the difference between configuration {{inventory_hostname }}
+      ansible.builtin.debug:
+        msg: >-
+            "Differences for {{ inventory_hostname}}"
+            "{{ _show_difference.stdout_lines| default('No differences found.') }}"
+      ignore_errors: yes
+    when: acl_type == 'standard' and not ping_status.failed and unique_new_acl_rules | length > 0
+      

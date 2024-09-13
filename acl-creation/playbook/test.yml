@@ -1,0 +1,326 @@
+- name: ACL Creation
+  hosts: even_batch1
+  gather_facts: false
+  connection: network_cli
+  vars:
+   _data_list: [
+      [
+      "Extended IP access list AGV",
+      "    10 permit icmp 10.155.8.0 0.0.7.255 any echo",
+      "    20 permit icmp 10.155.8.0 0.0.7.255 any echo-reply",
+      "    30 permit udp 10.155.8.0 0.0.7.255 10.155.8.0 0.0.7.255 eq ntp (33 matches)",
+      "    40 permit tcp 10.155.8.0 0.0.7.255 10.155.4.0 0.0.3.255 eq 2111 (605316 matches)",
+      "    50 deny ip 10.155.8.0 0.0.7.255 10.155.0.0 0.0.127.255",
+      "    60 permit ip 10.155.8.0 0.0.7.255 any (134838 matches)"
+    ]
+  ]
+
+  tasks:
+
+  - wait_for:
+     host: "{{ inventory_hostname }}"
+     port: 22
+     delay: 5
+     timeout: 5
+    delegate_to: localhost
+    register: ping_status
+    ignore_errors: yes
+
+  - debug:
+      msg: "{{ ping_status }}"
+
+    - name: Execute show command
+      ios_command:
+        commands:
+          - show run
+      register: show_run_full_config
+
+
+  - set_fact:
+     reachable_server: "{% for host in ansible_play_hosts %}
+      {% if 'ping_status' in hostvars[host] and not hostvars[host]['ping_status']['failed'] %}reachable
+      {% else %}
+      unreachable
+      {% endif %}
+      {% endfor %}"
+
+#difference filter which show the value which is not in the difference(list)
+  - debug:
+      msg: "{{ differ_stdout_lines[0]| difference(stdout_lines_testing[0]) }}"
+
+
+   - name: data manipulation (Extended or standard)
+     set_fact:
+        _msg: "{{ _data_list[0][0].split(' ')[0]|lower }}"
+
+   - debug:
+      msg: "{{ _msg }}"
+
+
+============================================
+
+=======================================
+
+
+
+---
+- name: Calculate and append sequence numbers to ACL entries
+  hosts: localhost
+  gather_facts: no
+
+  vars:
+    access_list:
+      - "Extended IP access list AGV"
+      - "    10 permit icmp 10.155.8.0 0.0.7.255 any echo"
+      - "    20 permit icmp 10.155.8.0 0.0.7.255 any echo-reply"
+      - "    30 permit udp 10.155.8.0 0.0.7.255 10.155.8.0 0.0.7.255 eq ntp (33 matches)"
+      - "    40 permit tcp 10.155.8.0 0.0.7.255 10.155.4.0 0.0.3.255 eq 2111 (605316 matches)"
+      - "    50 permit ip 10.155.8.0 0.0.7.255 any (134838 matches)"
+      - "    60 deny ip 10.155.8.0 0.0.7.255 10.155.0.0 0.0.127.255"
+      - "    70 permit ip 10.155.16.0 0.0.7.255 any (134838 matches)""
+      - "    80 deny any any"
+    
+    list_2: |
+         permit icmp 10.155.8.0 0.0.7.255 any echo
+         permit icmp 10.155.8.0 0.0.7.255 any echo-reply
+         permit udp 10.155.8.0 0.0.7.255 10.155.8.0 0.0.7.255 eq ntp (33 matches)
+         permit tcp 10.155.8.0 0.0.7.255 10.155.4.0 0.0.3.255 eq 2111 (605316 matches)
+
+  tasks:
+    - name: Find the last sequence number from the original access list
+      set_fact:
+        last_permit_sequence: "{{ (access_list | map('regex_search', '^\\s*(\\d+)') | map('int') | list) | last }}"
+#select('search', '^\\s*\\d+\\s+permit')
+    - name: Calculate the starting sequence number for list_2
+      set_fact:
+        next_sequence: "{{ last_permit_sequence|int + 10 }}"
+
+    - debug:
+        msg: >- 
+           "New sequence started at {{ next_sequence }}"
+           "The last sequence ended as {{ last_permit_sequence }}"
+
+    - name: Generate new ACL entries with updated sequence numbers
+      set_fact:
+        new_list: "{{ new_list | default([]) + [(next_sequence|int + (my_indx * 10))|string +' ' + item] }}"
+      loop: "{{ list_2 }}"
+      loop_control:
+        index_var: my_indx
+
+
+    - name: Display the new ACL entries with updated sequence numbers
+      debug:
+        msg: "{{ new_list }}"
+
+
+
+
+  tasks:
+    - name: Extract lines with 'deny' and 'any'
+      set_fact:
+        matched_lines: "{{ access_list | select('search', 'deny.*any') | list }}"
+    
+    - debug:
+        msg: "{{ matched_lines }}"
+
+    - name: Extract the sequence number from the matched 'deny' line
+      set_fact:
+        deny_sequence: "{{ (matched_lines | map('regex_search', '^\\s*(\\d+)') | map('int') | list) }}"
+    
+    - debug:
+        msg: "{{ deny_sequence }}"
+
+    - name: Extract the sequence numbers from access list
+      set_fact:
+        all_sequences: "{{ access_list | select('search', '^\\s*\\d+') | map('regex_search', '^\\s*(\\d+)') | map('int') | list }}"
+
+
+    - debug:
+       msg: "{{ all_sequences }}"
+
+    - name: Find the previous sequence number from the deny rule
+      set_fact:
+        previous_sequence: "{{ all_sequences[all_sequences.index(deny_sequence[0]) -1] }}"
+
+    - debug: 
+        msg: "{{ previous_sequence }}"
+
+    - name: Find the difference between the deny and previous sequence
+       debug:
+        msg: "{{ (deny_sequence[0]|int) - (previous_sequence|int) }}"
+
+    - name: Store the difference between deny and last previous sequence
+      set_fact:
+          diff: "{{ (deny_sequence[0]|int) - (previous_sequence|int) }}"
+
+    - name: get number to cacl for upcoming sequ
+      set_fact:
+       sequence_cal: >- 
+                  {% if diff|int <= 50 %}
+                  2
+                  {% elif (diff|int <= 100) or (diff|int >= 50) %}
+                  5
+                  {% else %}
+                  10
+                  {% endif %}
+
+    - debug:
+        msg: "{{ sequence_cal.strip() }}
+
+
+==========================================================
+
+
+---
+- name: Calculate and append sequence numbers to ACL entries
+  hosts: localhost
+  gather_facts: no
+
+  vars:
+    access_list:
+      - "Extended IP access list AGV"
+      - "    10 permit icmp 10.155.8.0 0.0.7.255 any echo"
+      - "    20 permit icmp 10.155.8.0 0.0.7.255 any echo-reply"
+      - "    30 permit udp 10.155.8.0 0.0.7.255 10.155.8.0 0.0.7.255 eq ntp (33 matches)"
+      - "    40 permit tcp 10.155.8.0 0.0.7.255 10.155.4.0 0.0.3.255 eq 2111 (605316 matches)"
+      - "    50 permit ip 10.155.8.0 0.0.7.255 any (134838 matches)"
+      - "    120 deny ip 10.155.8.0 0.0.7.255 10.155.0.0 0.0.127.255"
+      - "    300 deny any any"
+    
+    list_2:
+      - "permit icmp 10.155.8.0 0.0.7.255 any echo"
+      - "permit icmp 10.155.8.0 0.0.7.255 any echo-reply"
+      - "permit udp 10.155.8.0 0.0.7.255 10.155.8.0 0.0.7.255 eq ntp (33 matches)"
+      - "permit tcp 10.155.8.0 0.0.7.255 10.155.4.0 0.0.3.255 eq 2111 (605316 matches)"
+
+  tasks:
+  - name: Extract the sequence number from the matched 'deny' line
+    ansible.builtin.set_fact:
+      deny_sequence: "{{ (access_list |select('search', 'deny.*any')| map('regex_search', '^\\s*(\\d+)') | map('int') | list) }}"
+
+  - ansible.builtin.debug:
+      msg: "{{ deny_sequence }}"
+
+  - name: Extract the sequence numbers only from access list
+    ansible.builtin.set_fact:
+      all_sequences: "{{ access_list | select('search', '^\\s*\\d+') | map('regex_search', '^\\s*(\\d+)') | map('int') | list }}"
+
+
+  - ansible.builtin.debug:
+      msg: "{{ all_sequences }}"
+
+
+  - name: Find the previous sequence number from the last deny rule
+    ansible.builtin.set_fact:
+      previous_sequence: "{{ all_sequences[all_sequences.index(deny_sequence[0]) -1] }}"
+
+
+  - ansible.builtin.debug: 
+      msg: "{{ previous_sequence }}"
+
+  - name: Store the difference between deny and last previous sequence
+    ansible.builtin.set_fact:
+        diff: "{{ (deny_sequence[0]|int) - (previous_sequence|int) }}"
+
+  - name: Find the difference between the deny and previous sequence
+    ansible.builtin.debug:
+      msg: "{{ (deny_sequence[0]|int) - (previous_sequence|int) }}"
+
+
+  - name: Get number to calculate for upcoming sequence number for the new rule
+    ansible.builtin.set_fact:
+      sequence_cal: >- 
+                {% if (diff|int <= 10) and (diff|int > 20) %}
+                1
+                {% elif (diff|int >= 20) and (diff|int < 50) %}
+                2
+                {% elif (diff|int < 100) and (diff|int >= 50) %}
+                5
+                {% else %}
+                10
+                {% endif %}
+
+
+  - name: Generate new ACL entries with updated sequence numbers
+    ansible.builtin.set_fact:
+        __extended_acl_rule_add_seq: "{{ __extended_acl_rule_add_seq | default([]) + [(previous_sequence|int + ((my_indx + 1) * sequence_cal.strip()|int))|string +' ' + item] }}"
+    loop: "{{ list_2 }}"
+    loop_control:
+        index_var: my_indx
+    when: diff|int > 10
+
+  - debug:
+      msg: "{{ __extended_acl_rule_add_seq | default(omit)}}"
+
+  - debug:
+      msg: "{{ access_list|default(omit) }}"
+
+
+=====================================================================================
+
+---
+- name: Calculate and append sequence numbers to ACL entries
+  hosts: localhost
+  gather_facts: no
+
+  vars:
+    access_list:
+      - "Extended IP access list AGV"
+      - "    10 permit icmp 10.155.8.0 0.0.7.255 any echo"
+      - "    20 permit icmp 10.155.8.0 0.0.7.255 any echo-reply"
+      - "    30 permit udp 10.155.8.0 0.0.7.255 10.155.8.0 0.0.7.255 eq ntp (33 matches)"
+      - "    40 permit tcp 10.155.8.0 0.0.7.255 10.155.4.0 0.0.3.255 eq 2111 (605316 matches)"
+      - "    50 permit ip 10.155.8.0 0.0.7.255 any (134838 matches)"
+      - "    120 deny ip 10.155.8.0 0.0.7.255 10.155.0.0 0.0.127.255"
+      - "    300 deny any any"
+    
+    list_2:
+      - "permit icmp 10.154.8.0 0.0.7.255 any echo"
+      - "permit icmp 10.153.8.0 0.0.7.255 any echo-reply"
+      - "permit udp 10.153.8.0 0.0.7.255 10.155.8.0 0.0.7.255 eq ntp (33 matches)"
+      - "permit tcp 10.155.8.0 0.0.7.255 10.155.4.0 0.0.3.255 eq 2111 (605316 matches)"
+      - "permit udp 10.155.9.0 0.0.7.255 10.155.4.0 0.0.3.255"
+
+
+  tasks:
+    - set_fact:
+         proper_list: "{{ access_list | select('search', '^\\s*\\d+') | map('regex_replace', '^\\s*\\d+\\s+', '')|list }}"
+    
+    - debug:
+         msg: "Compare the two rule and get the exact rule {{ (list_2.split('\n'))|difference(proper_list) }}"
+
+    - debug:
+       msg: "Already available rule {{ proper_list | intersect(list_2) }}"
+
+=======================================================================
+
+Tomorrow need to work on this unique rule apply for ACL addition
+
+- name: Remove existing ACL rules from the new list
+  ansible.builtin.set_fact:
+    unique_new_acl_rules: "{{ new_acl_rules | difference(current_acl_rules) }}"
+
+- name: Apply only unique new ACL rules
+  cisco.ios.ios_config:
+    lines: "{{ unique_new_acl_rules }}"
+    parents: "ip access-list standard {{ acl_name }}"
+  when: unique_new_acl_rules | length > 0
+
+- name: Validate ACL configuration
+      cisco.ios.ios_command:
+        commands:
+          - "show ip access-lists {{ acl_name }}"
+      register: acl_validation
+
+    - name: Confirm that unique new rules are applied
+      ansible.builtin.fail:
+        msg: "Some unique new rules were not applied correctly on {{ inventory_hostname }}"
+      when: not all(rule in acl_validation.stdout[0] for rule in unique_new_acl_rules)
+
+    - name: Save configuration
+      cisco.ios.ios_config:
+        save: yes
+
+    - name: Completion report
+      ansible.builtin.debug:
+        msg: "Successfully updated ACL {{ acl_name }} on {{ inventory_hostname }} with unique new rules."

@@ -3,11 +3,25 @@
 
 - import_tasks: preflight.yml
 
-- import_tasks: acl_creation.yml
-  when: config_type == "addition"
+#If the ACL rule already have an 'deny any' in the rule then below
+#Below task will call and add the new rule before the 'deny any' rule
+- include_tasks: acl_deny_any_sequence.yml
+  when: config_type == "addition" and deny_matched_lines|length != 0
 
-- import_tasks: acl_deletion.yml
-  when: config_type == "deletion"
+- include_tasks: acl_creation.yml
+  when: config_type == "addition" and deny_matched_lines|length == 0
+  tags:
+    - acl_rule_creation
 
-- import_tasks: acl_post_check.yml
+# - include_tasks: acl_deletion.yml
+#   when: config_type == "deletion"
+#   tags:
+#     - acl_rule_deletion
 
+- include_tasks: acl_creation_post_check.yml
+
+- name: Fail if ACL not found in the switch
+  ansible.builtin.fail:
+    msg: >-
+        "ACL {{ acl_name }} NOT FOUND OR NOT CONFIGURED ON {{ inventory_hostname|upper }}"
+  when: acl_type == 'not_found' or acl_type == 'Acl_not_configured'

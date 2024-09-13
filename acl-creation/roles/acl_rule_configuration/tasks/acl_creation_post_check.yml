@@ -6,29 +6,48 @@
     register: _After_show_acl_desired_value
     ignore_errors: yes
 
-
-  - name: Create the text file with before and After ACL_rule data
-    copy:
-      dest: "{{tower_job_id}}_ACL_report.txt"
-      content: "{{report_generation_value}}"
-    delegate_to: local
-    run_once: true
+  - name: Confirm that unique new rules are applied appropirately or not
+    ansible.builtin.fail:
+      msg: "Some unique new rules were not applied correctly on {{ inventory_hostname }}"
+    when: not all(rules in _After_show_acl_desired_value.stdout.splitlines() for rules in unique_new_acl_rules)
 
 
-  - name: Send email to RE to manually verify from their end
-    community.general.mail:
-          host: <smtp hostname>
-          port: 25
-          subject: "New_ACL_RULE_added_Report_{{change_number}}"
-          subtype: html
-          body: "{{_email_body_message }}"
-          to: "{{_email_address_to}}" #"attsawc1@globalpsa.com"
-          from: "noreply@ansible.psa"
-          cc: "{{_email_address_cc}}"
-          attach: "{{tower_job_id}}_ACL_report.txt"
+  - name: Completion report
+    ansible.builtin.debug:
+      msg: "Successfully updated ACL {{ acl_name }} on {{ inventory_hostname }} with unique new rules."
+    when: debug_type|bool
+
+  - name: Apply block condition to send email
+    block: 
+    - name: Create the text file with before and After ACL_rule data
+      ansible.builtin.copy:
+        dest: "{{change_number}}_ACL_report.txt"
+        content: "{{report_generation_value}}"
+  
+    - name: Create the text file with before and After ACL_rule data
+      ansible.builtin.copy:
+        dest: "{{change_number}}_failure_switches_list.txt"
+        content: "{{failure_report_generation_value}}"
+
+
+    # - name: "ReportGeneration: Generating report"
+    #   ansible.builtin.template:
+    #     src: "{{ report_template_name }}"
+    #     dest: "{{tower_job_id}}_ACL_report.html"
+
+    - name: Send email to RE to manually verify from their end
+      community.general.mail:
+            host: <smtp hostname>
+            port: 25
+            subject: "New_ACL_RULE_added_Report_{{change_number}}"
+            subtype: html
+            body: "{{tower_email_body_message }}"
+            to: "{{tower_email_address_to}}" 
+            from: "noreply@ansible.psa"
+            cc: "{{tower_email_address_cc}}"
+            attach: 
+               - "{{change_number}}_ACL_report.txt"
+               - "{{change_number}}_failure_switches_list.txt"
+            #attach: "{{tower_job_id}}_ACL_report.html"
     delegate_to: localhost
     run_once: true
-
-
-
-

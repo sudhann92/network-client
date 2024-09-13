@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ACL REPORT</title>
+  <!--link rel="stylesheet" href="//fonts.googleapis.com/css?family=Open+Sans"-->
+  <style>
+    body {
+      font-family: 'Open Sans', sans-serif;
+      margin: 5px;
+      background-color: #c9d8e7;
+      color: #333;
+      font-size: 80%;
+    }
+    h1 {
+      text-align: center;
+      font-size: 24px;
+      color: #0056b3;
+    }
+    .section {
+      margin-top: 40px;
+    }
+    .header {
+      background-color: #e2e2e2;
+      padding: 5px;
+      font-weight: bold;
+      color: #444;
+    }
+    .table-one {
+      width: 50%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      background-color: #fff;
+    }
+    table {
+      width: 80%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      background-color: #fff;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f4f4f4;
+      color: #333;
+    }
+    tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+    tr:hover {
+      background-color: #f1f1f1;
+    }
+    ul {
+      list-style-type: none;
+      padding-left: 0;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 20px;
+      font-size: smaller;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+
+<h1>ACL Configuration Report</h1>
+
+<div class="section">
+    <table class="table-one">
+        <thead>
+          <tr>
+            <th colspan="2">SUMMARY</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>Date_Time</b></td>
+            <td>{{current_date_time}}</td>
+          </tr>
+          <tr>
+            <td><b>Total_Hosts_Ran_on_Playbook</b></td>
+            <td>{{ansible_play_hosts_all|length}}</td>
+          </tr>
+          <tr>
+            <td><b>Ansible_Job_ID</b></td>
+            <td><a href="https://www.ansible-automation/{{tower_job_id}}.com">JOB_ID_{{tower_job_id}}</a></td>
+          </tr>
+          <tr>
+            <td><b>Ansible_User_name</b></td>
+            <td>{{tower_user_id}}</td>
+          </tr>
+          <tr>
+            <td><b>Change_Number</b></td>
+            <td>{{ Change_Number }}</td>
+          </tr>
+        </tbody>
+    </table>
+</div>
+
+<div>
+  <p><a style="text-align:center;font-weight:bold;font-size:medium" href="#summary">Host Summary</a></p>
+  <hr>
+  <p>Host Results</p>
+  {% for item in ansible_play_hosts_all  %}
+  <a href="#{{item}}">{{item}}</a>
+  {% endfor %}
+  <hr>
+</div>
+
+<div class="section">
+  <h2>Ansible Automation ACL Post-Check Data</h2>
+
+  {% for host in ansible_play_hosts_all %}
+  <div class="header">
+    <id="{{host}}">Hostname: {{host}}
+  </div>
+
+  {% if 'ping_status' in hostvars[host] and not hostvars[host]['ping_status']['failed'] %}
+    <table>
+      <thead>
+        <tr>
+          <th colspan="2">BEFORE NEW ACL CONFIG</th>
+        </tr>
+        <tr>
+          <th>ACL_NAME</th>
+          <th>ACL_TYPE</th>
+          <th>ACL_RULE_ENTRY</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>{{ hostvars[host]['acl_name'] | default('N/A') }}</td>
+          <td>{{ hostvars[host]['acl_type'] | default('N/A') }}</td>
+          <td>
+            <ul>
+                {% set rule_lines = hostvars[host]['_before_show_acl_desired_value']['stdout_lines'][1:] %} 
+                {% for rule in rule_lines|default([]) %}
+                    <li>{{ rule|default("No Rule") }}</li>
+                {% endfor %}
+            </ul>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <table>
+      <thead>
+        <tr>
+          <th colspan="2">AFTER NEW ACL CONFIG PUSHED </th>
+        </tr>
+        <tr>
+          <th>ACL_NAME</th>
+          <th>ACL_TYPE</th>
+          <th>ACL_RULE_ENTRY</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>{{ hostvars[host]['acl_name'] | default('N/A') }}</td>
+          <td>{{ hostvars[host]['acl_type'] | default('N/A') }}</td>
+          <td>
+            <ul>
+            {% set rule_lines_after = hostvars[host]['_after_show_acl_desired_value']['stdout_lines'][1:] %}
+            {% for rule in rule_lines_after|default([]) %}
+            <li>{{ rule }}</li>
+            {% endfor %}
+            </ul>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  
+  {% else %}
+  <p>
+    <span style="background-color: red"> 
+        <b>This switch is not reachable or had some issues during the Ansible execution,Please check manually.</b>
+    </span>
+  </p>
+  {% endif %}
+  <hr>
+  {% endfor %}
+</div>
+
+<footer class="footer">
+  &copy; <small>All rights reserved for PSA</small>
+</footer>
+
+</body>
+</html>

@@ -1,17 +1,19 @@
 ---
 # defaults file for acl_configuration
+debug_type: false
 __extended_acl_rule: []
 __standard_acl_rule: []
 change_number: "CHG000001"
-_email_body_message: |
+tower_email_body_message: |
             <font face="Arial"> 
             Hi "{{tower_user_name}}"
             Kindly find the attached ACL_report.
             Ansible_Job_template: "{{tower_job_template_name}}"
             Ansible_Job_id: "{{tower_job_id}}"
             Ansible_job_launched_by: "{{tower_user_id}}"
-_email_address_to: []
-_email_address_cc: []
+tower_email_address_to: []
+tower_email_address_cc: []
+report_template_name: "acl_report.html.j2"
 
 report_generation_value: |
       ==============================
@@ -20,39 +22,71 @@ report_generation_value: |
       {% for host in ansible_play_hosts_all %}
       {% if 'ping_status' in hostvars[host] and not hostvars[host]['ping_status']['failed'] %}
       ----------------------------
-      Hostname: "{{host}}"
+      >>>>>>>Hostname: "{{host}}">>>>>>>>>>
       ----------------------------
       Before_ACL_Config
       ----------------------------
       ACL_name: "{{acl_name}}"
       ACL_Type: "{{ hostvars[host]['acl_type'] }}"
-      ===========================================
+      ===========================================================
       {% set rule_lines_ = hostvars[host]['_before_show_acl_desired_value']['stdout_lines'][1:] %}
-      {% for i in _rule_lines %}
+      {% for rules in _rule_lines %}
       ACL_Entry: 
-      "{{ rule_lines_ }}"
+      "{{ rules }}"
       {% endfor %}
-      ============================================
+      =============================================================
+      #############################################
     
       ---------------------------
       After_New_ACL_Config_Pushed
       ---------------------------
       ACL_name: "{{acl_name}}"
       ACL_Type: "{{ hostvars[host]['acl_type'] }}"
-      ===========================================
+      ===============================================================
 
       {% set rule_lines_after = hostvars[host]['_before_show_acl_desired_value']['stdout_lines'][1:] %}
-      {% for i in rule_lines_after %}
+      {% for rules in rule_lines_after %}
       ACL_Entry: 
-      "{{ rule_lines_ }}"
+      "{{ rules }}"
       {% endfor %}
   
-      ============================================
+      ================================================================
       {% else %}
       ----------------------------
-      Hostname: "{{host}}"
+      >>>>>>>Hostname: "{{host}}">>>>>>>>>>
       ----------------------------
       This Switch not reachable or have some issue during the ansible execution kindly check manually
       {% endif %}
       {% endfor %}
+
+
+failure_report_generation_value: |
+                 ==============================================================================
+                 If you see any Switches below,all are Unreachable during the execution 
+                 Kindly check the port 22 is enabled for below switches
+                 ===============================================================================
+                 {% for host in ansible_play_hosts_all %}
+                 {% if hostvars[host]['ping_status']['failed'] %}
+                 {{ host }}
+                 {% endif %}
+                 {% endfor %}
+
+                 ================================================================================
+                 If you see any switches below that are all "NO ACL NAME or ACL NOT CONFIGURED IT"
+                 ================================================================================
+                 {% for host in ansible_play_hosts_all %}
+                 {% if ('not_found' in hostvars[host]['acl_type']) or ('Acl_not_configured' in hostvars[host]['acl_type']) %}
+                 {{ host }}
+                 {% endif %}
+                 {% endfor %}
+                 
+                 ================================================================================
+                 Failed During deny new sequence applying in switches
+                 Kindly check manually if any switch name avilable in below
+                 ================================================================================
+                 {% for host in ansible_play_hosts_all %}
+                 {% if hostvars[host]['failure_switch_name'] is defined %}
+                 {{ failure_switch_name }}
+                 {% endif %}
+                 {% endfor %}
 
