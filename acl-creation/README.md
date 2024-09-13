@@ -9,13 +9,7 @@ The AWX.AWX OR ANSIBLE.CONTROLLER collections MUST be installed in order for thi
 
 ```yaml
 ---
-- name: Playbook to configure ansible controller post installation
-  hosts: localhost
-  connection: local
-  vars:
-    controller_validate_certs: false
-  collections:
-    - awx.awx
+
 ```
 ## Installing this collection
 
@@ -29,8 +23,7 @@ You can also include it in a `requirements.yml` file and install it with `ansibl
 
 ```yaml
 ---
-collections:
-  - name: awx.awx
+
     # If you need a specific version of the collection, you can specify like this:
     # version: ...
 ```
@@ -51,11 +44,7 @@ Otherwise it will look for the modules only in your base installation. If there 
 Define following vars inside in the group_vars/all/vars.yml file
 ```yaml
 ---
-controller_validate_certs: false
-controller_username: "<user name to login to the Ansible automation platform>"
-#ansible-vault encrypt_string "<password string to encrypt" --name '<string name of the variable>'
-controller_password: <Encrypted password>
-controller_hostname: "<Ansible automation platform hostname>"
+
 ```
 You can also specify authentication by a combination of either:
 
@@ -73,12 +62,6 @@ created four roles for this playbook
 
 ```yaml
 ---
-controller_inventory_name: "<Name of the inventory>"
-controller_host_device_name: "xxxx,yyy,zzzz <name of the devices>"
-controller_groups_name:
-    - group_name: "<group name>"
-      preserve_existing_hosts: "<By default this value is 'false' if you would like to preserve the existing hosts for this group then change as "True" >
-      hosts: "aaaa,bbb,cccc,ddddd,xxxx,yyyy,zzzz <name of the devices>"
 
 ```
 
@@ -86,46 +69,27 @@ controller_groups_name:
 
 ``` yaml
 ---
-controller_inventory_name: "Demo_Inventory"
-controller_host_device_name: "switch_name_1,switch_name_2,switch_name_3,switch_name_4"
-controller_groups_name:
-              - group_name: "agv_access"
-                hosts: "switch_name_1,switch_name_2"
-              - group_name: "refer_av"
-                hosts: "switch_name_3,switch_name_4"
+
 ```
 ``` yaml
 ---
-controller_inventory_name: "Demo_Inventory"
-controller_host_device_name: "switch_name_1,switch_name_2"
-controller_groups_name: []
-```
+
 
 ``` yaml
 ---
-controller_inventory_name: "Demo_Inventory"
-controller_host_device_name: "switch_name_1,switch_name_2"
-controller_groups_name:
-              - group_name: "agv_access"
-                hosts: "switch_name_1,switch_name_2"
+
 ```                
 
 
 ### Below is the Extra variable input for Delete-host-group-AAP playbook
 
 ```yaml
-controller_inventory_name: "<Name of the inventory>"
-controller_host_device_name: "<Name of the device>"
-controller_groups_name: "<Name of the group>"
+
 ```
 
 ## Example:
 
 ```yaml
 
-controller_inventory_name: "Tuas inventory"
-controller_host_device_name: "switch_name_1,switch_name_2,switch_name_3"
-controller_groups_name: "group_name_1,group_name_2"
-controller_state: "absent"
 
 ```

@@ -1,9 +1,11 @@
 ---
 # defaults file for acl_configuration
 debug_type: false
-__extended_acl_rule: []
-__standard_acl_rule: []
+# __extended_acl_rule: []
+# __standard_acl_rule: []
 change_number: "CHG000001"
+
+# Email body variable
 tower_email_body_message: |
             <font face="Arial"> 
             Hi "{{tower_user_name}}"
@@ -15,6 +17,7 @@ tower_email_address_to: []
 tower_email_address_cc: []
 report_template_name: "acl_report.html.j2"
 
+#Report Generation content variable
 report_generation_value: |
       ==============================
       ACL_POST_CHECK_DATA
@@ -79,7 +82,7 @@ failure_report_generation_value: |
                  {{ host }}
                  {% endif %}
                  {% endfor %}
-                 
+
                  ================================================================================
                  Failed During deny new sequence applying in switches
                  Kindly check manually if any switch name avilable in below
