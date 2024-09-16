@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ACL REPORT</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      margin: 20px;
+      background-color: #f4f7fc;
+      color: #333;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    h1, h2 {
+      text-align: center;
+      color: #0056b3;
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    .section {
+      margin-bottom: 40px;
+    }
+    .header {
+      background-color: #e8f1f8;
+      padding: 10px;
+      font-weight: bold;
+      color: #444;
+      border-radius: 5px;
+    }
+    .table-one, table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      background-color: #fff;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: left;
+    }
+    th {
+      background-color: #0056b3;
+      color: white;
+      font-weight: bold;
+    }
+    tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+    tr:hover {
+      background-color: #f1f1f1;
+    }
+    .summary {
+      background-color: #eef5fb;
+      padding: 15px;
+      border-radius: 5px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+    }
+    ul {
+      list-style-type: none;
+      padding-left: 0;
+      margin: 0;
+    }
+    ul li {
+      margin-bottom: 5px;
+    }
+    a {
+      color: #0056b3;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 40px;
+      font-size: 12px;
+      color: #666;
+    }
+    .alert {
+      background-color: #fce4e4;
+      color: #d9534f;
+      padding: 10px;
+      border-radius: 5px;
+    }
+
+    /* Flexbox for Horizontal Layout */
+    .hosts-container {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .hosts-list {
+      width: 48%;
+      background-color: #eef5fb;
+      padding: 15px;
+      border-radius: 5px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .hosts-list h3 {
+      text-align: center;
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+    .hosts-list p {
+      margin: 0;
+    }
+    .hosts-list .host-item {
+      display: inline;
+      margin-right: 10px;
+      background: #fff;
+      padding: 5px;
+      border-radius: 5px;
+      border: 1px solid #ddd;
+    }
+  </style>
+</head>
+<body>
+
+<h1>ACL Configuration Report</h1>
+
+<div class="section">
+    <div class="summary">
+      <table class="table-one">
+        <thead>
+          <tr>
+            <th colspan="2">SUMMARY</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>Date & Time</b></td>
+            <td>{{ current_date_time }}</td>
+          </tr>
+          <tr>
+            <td><b>Total Hosts Ran on Playbook</b></td>
+            <td>{{ ansible_play_hosts_all | length }}</td>
+          </tr>
+          <tr>
+            <td><b>Ansible Job ID</b></td>
+            <td><a href="https://www.ansible-automation/{{ tower_job_id }}.com">JOB ID {{ tower_job_id }}</a></td>
+          </tr>
+          <tr>
+            <td><b>Ansible Username</b></td>
+            <td>{{ tower_user_id }}</td>
+          </tr>
+          <tr>
+            <td><b>Change Number</b></td>
+            <td>{{ Change_Number }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+</div>
+
+<!-- Horizontal Layout for Reachable and Unreachable Hosts -->
+<div class="hosts-container">
+  <!-- Reachable Hosts -->
+  <div class="hosts-list">
+    <h3>Reachable Hosts</h3>
+    {% set hs = namespace(reachable_hosts = []) %}
+    {% for host in ansible_play_hosts_all %}
+      {% if 'ping_status' in hostvars[host] and not hostvars[host]['ping_status']['failed'] %}
+        {% set hs.reachable_hosts = hs.reachable_hosts + [host] %}
+      {% endif %}
+    {% endfor %}
+    <p>
+      {% for host in hs.reachable_hosts %}
+        <span class="host-item"><a href="#{{ host }}">{{ host }}</a></span>
+      {% endfor %}
+    </p>
+    <p><b>Total Reachable Switches: {{ hs.reachable_hosts | length }}</b></p>
+  </div>
+
+  <!-- Unreachable Hosts -->
+  <div class="hosts-list">
+    <h3>Unreachable Hosts</h3>
+    {% set hs = namespace(unreachable_hosts = []) %}
+    {% for host in ansible_play_hosts_all %}
+      {% if 'ping_status' in hostvars[host] and hostvars[host]['ping_status']['failed'] %}
+        {% set hs.unreachable_hosts = hs.unreachable_hosts + [host] %}
+      {% endif %}
+    {% endfor %}
+    <p>
+      {% for host in hs.unreachable_hosts %}
+        <span class="host-item"><a href="#{{ host }}">{{ host }}</a></span>
+      {% endfor %}
+    </p>
+    {% if hs.unreachable_hosts | length == 0 %}
+    <p>All hosts are reachable. No unreachable hosts found.</p>
+    {% else %}
+    <p><b>Total Unreachable Switches: {{ hs.unreachable_hosts | length }}</b></p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="section">
+  <h2>Ansible Automation ACL Post-Check Data</h2>
+
+  {% for host in ansible_play_hosts_all %}
+  <div class="header">
+    <div id="{{ host }}">Hostname: {{ host }}</div>
+  </div>
+
+  {% if 'ping_status' in hostvars[host] and not hostvars[host]['ping_status']['failed'] %}
+    <table>
+      <thead>
+        <tr>
+          <th colspan="4">BEFORE NEW ACL CONFIG</th>
+        </tr>
+        <tr>
+          <th>ACL Name</th>
+          <th>ACL Type</th>
+          <th>ACL Rule Entries</th>
+          <th>Total count</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>{{ hostvars[host]['acl_name'] | default('N/A') }}</td>
+          <td>{{ hostvars[host]['acl_type'] | default('N/A') }}</td>
+          <td>
+            <ul>
+              {% set rule_lines = hostvars[host]['_before_show_acl_desired_value']['stdout_lines'][1:] %}
+              {% for rule in rule_lines | default([]) %}
+              <li>{{ rule | default("No Rule") }}</li>
+              {% endfor %}
+            </ul>
+          </td>
+          <td>{{ rule_lines | length }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <table>
+      <thead>
+        <tr>
+          <th colspan="4">AFTER NEW ACL CONFIG PUSHED</th>
+        </tr>
+        <tr>
+          <th>ACL Name</th>
+          <th>ACL Type</th>
+          <th>New ACL Rule Entries</th>
+          <th>Total count</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>{{ hostvars[host]['acl_name'] | default('N/A') }}</td>
+          <td>{{ hostvars[host]['acl_type'] | default('N/A') }}</td>
+          <td>
+            <ul>
+              {% set rule_lines_after = hostvars[host]['_after_show_acl_desired_value']['stdout_lines'][1:] %}
+              {% for rule in rule_lines_after | default([]) %}
+              <li>{{ rule }}</li>
+              {% endfor %}
+            </ul>
+          </td>
+          <td>{{ rule_lines_after | length }}</td>
+        </tr>
+      </tbody>
+    </table>
+  {% else %}
+  <p class="alert">
+    <b>This switch is not reachable or had some issues during Ansible execution. Please check manually.</b>
+  </p>
+  {% endif %}
+  <hr>
+  {% endfor %}
+</div>
+
+<footer class="footer">
+  &copy; <small>All rights reserved PSA

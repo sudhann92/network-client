@@ -1,22 +1,29 @@
 # ACL RULE ADDITION AND DELETION
 
-This Playbook allows to interaction with AWX and Ansible Automation controller API for create the 
-bulk host and Group creation in the inventory
+This Playbook allows to interaction with Cisco and Hauwei switches to add the new rule to the ACL
 
 ## REQUIREMENTS
 
-The AWX.AWX OR ANSIBLE.CONTROLLER collections MUST be installed in order for this collection to work. It is recommended they be invoked in the playbook in the following way.
+The cisco.ios required for this playbook to connect with switches and push the ACL rule configuration
+The  community.general is used to send the mail to the consumer after the configuration pushed
 
 ```yaml
 ---
+- name: Check and Apply ACL Rules on Multiple Switches
+  hosts: "{{dynamic_group}}"
+  gather_facts: false
+  collections:
+       - cisco.ios
+       - community.general
 
 ```
 ## Installing this collection
 
-You can install the awx.awx collection with the Ansible Galaxy CLI:
+You can install the cisco.ios collection with the Ansible Galaxy CLI:
 
 ```console
-ansible-galaxy collection install awx.awx
+ansible-galaxy collection install cisco.ios
+ansible-galaxy collection install community.general
 ```
 
 You can also include it in a `requirements.yml` file and install it with `ansible-galaxy collection install -r requirements.yml`, using the format:
@@ -26,70 +33,40 @@ You can also include it in a `requirements.yml` file and install it with `ansibl
 
     # If you need a specific version of the collection, you can specify like this:
     # version: ...
+collections:
+     - cisco.ios
+     - community.general
 ```
-
 
 ## Using this collection
 
-The awx.awx collection must be invoked in the playbook in order for ansible to pick up the correct modules to use.
+The cisco.ios collection must be invoked in the playbook in order for ansible to pick up the correct modules to use.
+This modulde used to pushed the configuration to the cisco switches
 
 The following command will invoke the playbook with the awx collection
 
 ```console
-ansible-playbook  Bulk-host-group/playbook/create-host-group-AAP.yml --extra-vars "@variable.yaml"
+ansible-playbook  playbook/Acl_creation.yml --extra-vars "@variable.yaml"
 ```
-
-Otherwise it will look for the modules only in your base installation. If there are errors complaining about "couldn't resolve module/action" this is the most likely cause.
-
-Define following vars inside in the group_vars/all/vars.yml file
-```yaml
----
-
-```
-You can also specify authentication by a combination of either:
-
-- `controller_hostname`, `controller_username`, `controller_password`
-- `controller_hostname`, `controller_oauthtoken`
 
 ## ROLES
-created four roles for this playbook
-1) bulk-host-creation
-2) group-creation
-3) Host-deletion 
-4) Group-deletion
+created roles for this playbook
+1) acl_rule_configuration
 
-### Below is the  Extra variable input for Create-host-group-AAP playbook 
+### Below is the  Extra variable input for ACL_creation playbook
 
 ```yaml
 ---
-
-```
-
-## Example
-
-``` yaml
----
-
-```
-``` yaml
----
-
-
-``` yaml
----
-
-```                
-
-
-### Below is the Extra variable input for Delete-host-group-AAP playbook
-
-```yaml
-
-```
-
-## Example:
-
-```yaml
-
-
+acl_name: 'xyz'
+new_acl_rule: |
+        "permit new rule 1
+         permit new rule 2
+         permit new rule 3"
+dynamic_host: |
+         "switch_1
+          switch_2
+          switch_3"
+dynamic_group: "cisco_switch"
+config_type: "acl_additon"
+change_number: 'CHG000123'
 ```

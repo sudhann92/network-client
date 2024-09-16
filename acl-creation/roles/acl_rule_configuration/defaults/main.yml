@@ -15,7 +15,7 @@ tower_email_body_message: |
             Ansible_job_launched_by: "{{tower_user_id}}"
 tower_email_address_to: []
 tower_email_address_cc: []
-report_template_name: "acl_report.html.j2"
+report_template_name: "acl_report_addition.html.j2"
 
 #Report Generation content variable
 report_generation_value: |

@@ -19,6 +19,7 @@
       success_msg: "All Assert got verified"
 
 ## Dynamically adding the host and creating the group inside in the playbook itself using multitext type format from input
+#Machine user name and cred we can map directly in the template
     - name: Add host to inventory dynamically
       ansible.builtin.add_host:
         name: "{{ __hosts_value|trim }}"
