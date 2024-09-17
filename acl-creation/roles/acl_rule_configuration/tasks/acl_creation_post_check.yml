@@ -24,7 +24,7 @@
         dest: "{{change_number}}_ACL_report.txt"
         content: "{{report_generation_value}}"
   
-    - name: Create the text file with before and After ACL_rule data
+    - name: Create the text file with failed switches during the execution
       ansible.builtin.copy:
         dest: "{{change_number}}_failure_switches_list.txt"
         content: "{{failure_report_generation_value}}"

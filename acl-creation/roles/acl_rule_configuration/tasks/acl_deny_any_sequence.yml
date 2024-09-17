@@ -1,16 +1,17 @@
   ---
-  - name: Extract the sequence number from the matched 'deny' 'any' line and matched the 'deny' 'any' rule
+  - name: Extract the sequence number from the matched 'DENY ANY' line and matched the 'DENY ANY' rule
     ansible.builtin.set_fact:
       deny_sequence_number: "{{ (deny_matched_lines | map('regex_search', '^\\s*(\\d+)') | map('int') | list) }}"
       deny_rule_value: "{{ deny_matched_lines | map('regex_replace', '^\\s*\\d+\\s+', '') | join('')}}"
   
-  - ansible.builtin.debug:
+  - name: Display the deny sequence number and deny any rule
+    ansible.builtin.debug:
       msg: >-
-        "{{ deny_sequence_number }}"
-        "{{ deny_rule_value }}"
+        "Deny any current sequence number: {{ deny_sequence_number }}"
+        "Deny any complete rule value : {{ deny_rule_value }}"
     when: debug_type|bool 
 
-  - name: Extract the all sequence numbers only from access list
+  - name: Extract the all sequence numbers only from {{acl_name|upper}} list
     ansible.builtin.set_fact:
       all_sequences: "{{ _before_show_acl_desired_value.stdout | select('search', '^\\s*\\d+') | map('regex_search', '^\\s*(\\d+)') | map('int') | list }}"
 
@@ -18,15 +19,15 @@
       msg: "{{ all_sequences }}"
     when: debug_type|bool
 
-  - name: Find the previous sequence number and second_last previous number from the last deny rule
+  - name: Find the previous and second_last sequence number from the last deny rule
     ansible.builtin.set_fact:
       previous_sequence: "{{ all_sequences[all_sequences.index(deny_sequence_number[0]) -1] }}"
       second_last_previous_sequence: "{{ all_sequences[all_sequences.index(deny_sequence_number[0]) -2] }}"
 
   - ansible.builtin.debug: 
       msg: >- 
-         "{{ previous_sequence }}"
-         "{{second_last_previous_sequence}}"
+         "Last deny previous sequence number: {{ previous_sequence }}"
+         "Second last deny previous seq number: {{second_last_previous_sequence}}"
     when: debug_type|bool
 
   - name: Store the difference between deny and second last previous sequence
@@ -35,141 +36,163 @@
         second_last_diff: "{{ (previous_sequence|int) - (second_last_previous_sequence|int) }}"
 
 
-  - name: Display the difference between the deny and previous sequence
+  - name: Display the difference between the previous sequence and second last seq
     ansible.builtin.debug:
-      msg: "{{ (deny_sequence_number[0]|int) - (previous_sequence|int) }}"
+      msg: >-
+            "Difference between the deny and previous sequence: {{deny_diff}}"
+            "second last sequence difference value: {{second_last_diff}}"
     when: debug_type|bool
 
-  - name: Create the new sequence number for the exisiting deny rule 
-    set_fact:
-       __new_deny_rule_with_new_sequence: >- 
-       {% if (deny_sequence_number[0]|int < 500) and (deny_diff|int  <= 200) %}
-       500 {{deny_rule_value}}
-       {% elif (deny_sequence_number[0]|int >= 500) and (deny_sequence_number[0]|int < 1000) and (deny_diff|int  <= 200) %}
-       1000 {{deny_rule_value}}
-       {% endif %}
 
-  - name: Change the deny rule sequence as 500 or 1000
-    cisco.ios.ios_config:
-        lines: ["{{ __new_deny_rule_with_new_sequence|trim }}"]
+  - name: Added the 'DENY ANY' rule value with new ACL list of rule
+    ansible.builtin.set_fact:
+            combined_list_with_deny: "{{unique_new_acl_rules + [deny_rule_value] }}"
+  
+  # - name: Create the new sequence number for the exisiting deny rule 
+  #   set_fact:
+  #      __new_deny_rule_with_new_sequence: >- 
+  #      {% if (deny_sequence_number[0]|int < 500) and (deny_diff|int  <= 200) %}
+  #      500 {{deny_rule_value}}
+  #      {% elif (deny_sequence_number[0]|int >= 500) and (deny_sequence_number[0]|int < 1000) and (deny_diff|int  <= 200) %}
+  #      1000 {{deny_rule_value}}
+  #      {% endif %}
+
+  # - name: Change the deny rule sequence as 500 or 1000
+  #   cisco.ios.ios_config:
+  #       lines: ["{{ __new_deny_rule_with_new_sequence|trim }}"]
+  #       before:
+  #         - "show access-lists {{ acl_name }}"
+  #       after: 
+  #         - "show access-lists {{ acl_name }}"
+  #       match: none
+  #   register: _deny_applied_config
+  #   when: deny_diff|int  <= 200 and __new_deny_rule_with_new_sequence|length != 0
+
+  # - name: Apply Nested block condition based upon previous and deny value
+  #   block:
+  - name: Apply Block Condition
+    block: 
+    - name: Generate new ACL RULE entries with proper sequence numbers for Extended Type with 'DENY ANY' rule
+      ansible.builtin.set_fact:
+        __extended_acl_rule_add_seq: "{{ __extended_acl_rule_add_seq | default([]) + [(previous_sequence|int + ((my_indx + 1) * second_last_diff|int))|string +' ' + item] }}"
+      loop: "{{ combined_list_with_deny }}"
+      loop_control:
+        index_var: my_indx
+
+    - name: Display new rule with combined 'DENY ANY' rule
+      ansible.builtin.debug:
+            msg: "{{__extended_acl_rule_add_seq}}"
+
+    - name: Apply Extended ACL if type is extended
+      cisco.ios.ios_config:
+        lines:
+          - "ip access-list extended {{ acl_name }}"
+          - "{{__extended_acl_rule_add_seq}}" 
         before:
           - "show access-lists {{ acl_name }}"
         after: 
+        - "show access-lists {{ acl_name }}"
+        match: none
+      register: _applied_config
+  
+    - name: Taking new backup after applied ACL rule
+      cisco.ios.ios_config:
+        backup: yes
+        backup_options:
+          filename: "/tmp/new_config_{{ inventory_hostname }}.txt"
+      register: initial_config
+
+    - name: Compare the old config and new config 
+      ansible.builtin.shell:
+        command: "diff /tmp/old_config_{{ inventory_hostname }}.txt /tmp/new_config_{{ inventory_hostname }}.txt"
+      register: _show_difference
+
+    - name: Display the difference between configuration {{inventory_hostname }}
+      ansible.builtin.debug:
+        msg: >-
+            "Differences for {{ inventory_hostname}}"
+            "{{ _show_difference.stdout_lines| default('No differences found.') }}"
+      ignore_errors: yes
+    when: 
+      - acl_type == 'extended' and not ping_status.failed
+      - unique_new_acl_rules|length > 0
+
+    resuce:
+    - name: display the failure message
+      ansible.builtin.debug:
+        msg: >-
+          This {{inventory_hostname}} switch had some problem kindly check manually
+
+    - name: store the name of switch which got failed in deny applying rule
+      ansible.builtin.set_fact:
+          failure_switch_name: "{{inventory_hostname}}"
+
+
+## based on Difference and number of nw rule input the below block will execute
+  - name: Apply New rule with sequence number for standard type ACL
+    block:
+    - name: Generate new ACL RULE entries with proper sequence numbers for Standard Type with 'DENY ANY' rule
+      ansible.builtin.set_fact:
+        __standard_acl_rule_add_seq: "{{ __standard_acl_rule_add_seq | default([]) + [(previous_sequence|int + ((my_indx + 1) * second_last_diff|int))|string +' ' + item] }}"
+      loop: "{{ combined_list_with_deny }}"
+      loop_control:
+        index_var: my_indx
+
+    - name: Display new rule with combined 'DENY ANY' rule
+      ansible.builtin.debug:
+            msg: "{{__extended_acl_rule_add_seq}}"
+
+    - name: Apply Standard ACL if type is standard
+      cisco.ios.ios_config:
+        lines:
+          - "ip access-list standard {{ acl_name }}"
+          - "{{__standard_acl_rule_add_seq}}"
+        before:
+          - "show access-lists {{ acl_name }}"
+        after:
           - "show access-lists {{ acl_name }}"
         match: none
-    register: _deny_applied_config
-    when: deny_diff|int  <= 200 and __new_deny_rule_with_new_sequence|length != 0
+      register: _applied_config
 
-  - name: Apply Nested block condition based upon previous and deny value
-    block:
-    - name: Apply Block Condition
-      block: 
-      - name: Generate new ACL RULE entries with incremental sequence numbers for Extended Type
-        ansible.builtin.set_fact:
-          __extended_acl_rule_add_seq: "{{ __extended_acl_rule_add_seq | default([]) + [(previous_sequence|int + ((my_indx + 1) * second_last_diff|int))|string +' ' + item] }}"
-        loop: "{{ unique_new_acl_rules }}"
-        loop_control:
-          index_var: my_indx
+    - name: Taking new backup after applied ACL rule
+      cisco.ios.ios_config:
+        backup: yes
+        backup_options:
+          filename: "/tmp/new_config_{{ inventory_hostname }}.txt"
+      register: initial_config
 
-      - name: Apply Extended ACL if type is extended
-        cisco.ios.ios_config:
-          lines:
-            - "ip access-list extended {{ acl_name }}"
-            - "{{__extended_acl_rule_add_seq}}" 
-          before:
-            - "show access-lists {{ acl_name }}"
-          match: none
-        register: _applied_config
-    
-      - name: Taking new backup after applied ACL rule
-        cisco.ios.ios_config:
-          backup: yes
-          backup_options:
-            filename: "/tmp/new_config_{{ inventory_hostname }}.txt"
-        register: initial_config
+    - name: Compare the old config and new config 
+      ansible.builtin.shell:
+        command: "diff /tmp/old_config_{{ inventory_hostname }}.txt /tmp/new_config_{{ inventory_hostname }}.txt"
+      register: _show_difference
 
-      - name: Compare the old config and new config 
-        ansible.builtin.shell:
-          command: "diff /tmp/old_config_{{ inventory_hostname }}.txt /tmp/new_config_{{ inventory_hostname }}.txt"
-        register: _show_difference
+    - name: Display the difference between configuration {{inventory_hostname }}
+      ansible.builtin.debug:
+        msg: >-
+            "Differences for {{ inventory_hostname}}"
+            "{{ _show_difference.stdout_lines| default('No differences found.') }}"
+      ignore_errors: yes
+    when: 
+      - acl_type == 'standard' and not ping_status.failed
+      - unique_new_acl_rules|length > 0
+      
+    resuce:
+    - name: display the failure message
+      ansible.builtin.debug:
+        msg: >-
+          This {{inventory_hostname}} switch had some problem kindly check manually
 
-      - name: Display the difference between configuration {{inventory_hostname }}
-        ansible.builtin.debug:
-          msg: >-
-              "Differences for {{ inventory_hostname}}"
-              "{{ _show_difference.stdout_lines| default('No differences found.') }}"
-        ignore_errors: yes
-      when: 
-        - acl_type == 'extended' and not ping_status.failed
-        - unique_new_acl_rules|length > 0
-
-      resuce:
-      - name: display the failure message
-        ansible.builtin.debug:
-          msg: >-
-            This {{inventory_hostname}} switch had some problem kindly check manually
-
-      - name: store the name of switch which got failed in deny applying rule
-        ansible.builtin.set_fact:
-            failure_switch_name: "{{inventory_hostname}}"
+    - name: store the name of switch which got failed in deny applying rule
+      ansible.builtin.set_fact:
+          failure_switch_name: "{{inventory_hostname}}"
 
 
-  ## based on Difference and number of nw rule input the below block will execute
-    - name: Apply New rule with sequence number for standard type ACL
-      block:
-      - name: Generate new ACL RULE entries with incremental sequence numbers for Standard Type
-        ansible.builtin.set_fact:
-          __standard_acl_rule_add_seq: "{{ __standard_acl_rule_add_seq | default([]) + [(previous_sequence|int + ((my_indx + 1) * second_last_diff|int))|string +' ' + item] }}"
-        loop: "{{ unique_new_acl_rules }}"
-        loop_control:
-          index_var: my_indx
 
-      - name: Apply Standard ACL if type is standard
-        cisco.ios.ios_config:
-          lines:
-            - "ip access-list standard {{ acl_name }}"
-            - "{{__standard_acl_rule_add_seq}}"
-          before:
-            - "show access-lists {{ acl_name }}"
-          match: none
-        register: _applied_config
-
-      - name: Taking new backup after applied ACL rule
-        cisco.ios.ios_config:
-          backup: yes
-          backup_options:
-            filename: "/tmp/new_config_{{ inventory_hostname }}.txt"
-        register: initial_config
-
-      - name: Compare the old config and new config 
-        ansible.builtin.shell:
-          command: "diff /tmp/old_config_{{ inventory_hostname }}.txt /tmp/new_config_{{ inventory_hostname }}.txt"
-        register: _show_difference
-
-      - name: Display the difference between configuration {{inventory_hostname }}
-        ansible.builtin.debug:
-          msg: >-
-              "Differences for {{ inventory_hostname}}"
-              "{{ _show_difference.stdout_lines| default('No differences found.') }}"
-        ignore_errors: yes
-      when: 
-        - acl_type == 'standard' and not ping_status.failed
-        - unique_new_acl_rules|length > 0
-        
-      resuce:
-      - name: display the failure message
-        ansible.builtin.debug:
-          msg: >-
-            This {{inventory_hostname}} switch had some problem kindly check manually
-
-      - name: store the name of switch which got failed in deny applying rule
-        ansible.builtin.set_fact:
-            failure_switch_name: "{{inventory_hostname}}"
-    when: previous_sequence|int < 900 and deny_sequence_number|int <= 1000
+  #   when: previous_sequence|int < 900 and deny_sequence_number|int <= 1000
 
   
-- name: Failed if the previous sequence more than 900 and deny is 1000
-  ansible.builtin.fail:
-       msg: >-
-          "The {{inventory_hostname}} ACL previous_sequence: {{previous_sequence}} and deny_sequence_number: {{deny_sequence_number}}"
-  when: previous_sequence|int > 900 and deny_sequence_number|int <= 1000
+# - name: Failed if the previous sequence more than 900 and deny is 1000
+#   ansible.builtin.fail:
+#        msg: >-
+#           "The {{inventory_hostname}} ACL previous_sequence: {{previous_sequence}} and deny_sequence_number: {{deny_sequence_number}}"
+#   when: previous_sequence|int > 900 and deny_sequence_number|int <= 1000

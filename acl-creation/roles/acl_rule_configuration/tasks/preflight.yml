@@ -46,7 +46,7 @@
      when: debug_type|bool
 
 
-  - name: Extract lines with 'deny' and 'any'
+  - name: Extract lines with 'DENY ANY' Rules in {{acl_name}}
     ansible.builtin.set_fact:
         deny_matched_lines: "{{ _before_show_acl_desired_value.stdout.splitlines() | select('search', 'deny.*any') | list }}"
 

@@ -30,7 +30,7 @@
            loop_var: __hosts_value
 
 
-## Using the above host as input and run the ACL rule configuration for the devices 
+## Using the above hosts as input and run the ACL rule configuration for the devices 
 - name: Check and Apply ACL Rules on Multiple Switches
   hosts: "{{dynamic_group}}"
   gather_facts: false

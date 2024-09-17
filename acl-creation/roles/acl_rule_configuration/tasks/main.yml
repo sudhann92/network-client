@@ -1,12 +1,17 @@
 ---
 # tasks file for acl_configuration
 
+## Preflight yaml contains the task to do the pre-check for the switches before apply the new ACL rule
+
 - import_tasks: preflight.yml
 
-#If the ACL rule already have an 'deny any' in the rule then below
-#Below task will call and add the new rule before the 'deny any' rule
+#If the ACL rule already have an 'deny any' in the rule then
+#Below yaml will call changed the deny any rule sequence in higher number and inserted the new rule before them with proper sequence
 - include_tasks: acl_deny_any_sequence.yml
   when: config_type == "addition" and deny_matched_lines|length != 0
+
+# If the esisitng acl rule doesnot have the 'deny any' rule then below yaml will get call
+#And configured the new rule in the given ACL name based upon the "ACL type"
 
 - include_tasks: acl_creation.yml
   when: config_type == "addition" and deny_matched_lines|length == 0
@@ -18,6 +23,7 @@
 #   tags:
 #     - acl_rule_deletion
 
+## Once the new ACL rule applied below playbook will call for post check and generated the report send to the team and the user
 - include_tasks: acl_creation_post_check.yml
 
 - name: Fail if ACL not found in the switch
