@@ -72,7 +72,7 @@
   #   block:
   - name: Apply Block Condition
     block: 
-    - name: Generate new ACL RULE entries with proper sequence numbers for Extended Type with 'DENY ANY' rule
+    - name: Generate new ACL RULE entries with proper sequence numbers for EXTENDED Type with 'DENY ANY' rule
       ansible.builtin.set_fact:
         __extended_acl_rule_add_seq: "{{ __extended_acl_rule_add_seq | default([]) + [(previous_sequence|int + ((my_indx + 1) * second_last_diff|int))|string +' ' + item] }}"
       loop: "{{ combined_list_with_deny }}"
@@ -131,7 +131,7 @@
 ## based on Difference and number of nw rule input the below block will execute
   - name: Apply New rule with sequence number for standard type ACL
     block:
-    - name: Generate new ACL RULE entries with proper sequence numbers for Standard Type with 'DENY ANY' rule
+    - name: Generate new ACL RULE entries with proper sequence numbers for STANDARD Type with 'DENY ANY' rule
       ansible.builtin.set_fact:
         __standard_acl_rule_add_seq: "{{ __standard_acl_rule_add_seq | default([]) + [(previous_sequence|int + ((my_indx + 1) * second_last_diff|int))|string +' ' + item] }}"
       loop: "{{ combined_list_with_deny }}"
