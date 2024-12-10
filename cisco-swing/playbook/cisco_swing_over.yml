@@ -1,0 +1,40 @@
+
+---
+- name: CISCO SWING OVER AND SWING BACK
+  hosts: "{{ host_group_names | default(all) }}"  # Need to create in survey and give input as group name "batch1,batch2" or hostname "hostname1,hostname2"
+  gather_facts: no
+  collections:
+       - cisco.ios
+       - community.general
+  vars:
+    current_date_time: "{{ansible_date_time.date}}_{{ansible_date_time.time}}"
+    Singtel_link_value: "Singtel - ST"
+    M1_link_value: "M1"
+
+  tasks:
+## Verifying the input value should not be empty pre-checking task
+    - name: Assert verfication of input variables
+      ansible.builtin.assert:
+      that:
+       - Interface_Tunnel_name|default('', true) != '' and (Interface_Tunnel_name == '8000' or Interface_Tunnel_name == '2000')
+       - ospf_cost_value|default('', true) != ''
+       - change_number|default('CHG00012') != ''
+       - condition_type|default('', true) != ''
+      fail_msg: "Tunnel_name, ospf_cost_value, change_number are empty Kindly enter appropirate value"
+      success_msg: "All Assert got verified"
+
+    - name: Include the ACL rule for creation
+      ansible.builtin.include_rule:
+          name: cisco-swing
+      tags:
+        - cisco-swing-over-back
+    
+
+    # - name: Metadata Manual Time efforts
+    #   ansible.builtin.set_stats:
+    #     data:
+    #       metadata:
+    #         description: "ACL RULE ADDITION"
+    #         Number_of_Switches_ACL: "{{ansible_play_hosts_all|length }}"
+    #         Manual_time_efforts_Mins: "{{ ansible_play_hosts_all|length * 15 }}"
+    #     aggregate: no

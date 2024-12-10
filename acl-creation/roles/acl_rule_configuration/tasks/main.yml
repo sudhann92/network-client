@@ -10,10 +10,20 @@
 - include_tasks: acl_deny_any_sequence.yml
   when: config_type == "addition" and deny_matched_lines|length != 0
 
+
+#- include_tasks: acl_deny_any_sequence_ios_acl.yml
+#  when: config_type == "addition" and deny_matched_lines|length != 0
+
 # If the esisitng acl rule doesnot have the 'deny any' rule then below yaml will get call
 #And configured the new rule in the given ACL name based upon the "ACL type"
 
 - include_tasks: acl_creation.yml
+  when: config_type == "addition" and deny_matched_lines|length == 0
+  tags:
+    - acl_rule_creation
+
+
+- include_tasks: acl_creation_ios_acl.yml
   when: config_type == "addition" and deny_matched_lines|length == 0
   tags:
     - acl_rule_creation

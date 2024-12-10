@@ -1,2 +1,19 @@
 ---
 # tasks file for cisco-swingover
+# If we increase fork value to 20 for this automation
+# For 500 - devices /20 - forks in ansible = 10 batches
+#In parallelism machanism for 10 batches * 5 seconds = 50  seconds only to complete below task
+#Incase if we get 5 host is not reachable we can avoid that host for remaining plays automatically
+- name: Check the reachability of the devices 
+  wait_for:
+    host: "{{ inventory_hostname }}"
+    port: 22
+    delay: 3
+    timeout: 5
+  delegate_to: localhost
+  register: ping_status
+  ignore_errors: yes
+
+- import_tasks: ospf_interface_swing.yml
+  when: not ping_status.failed
+#- import_tasks: ospf_inteface_swing_cisco_command.yml

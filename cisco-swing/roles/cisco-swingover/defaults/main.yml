@@ -1,2 +1,4 @@
 ---
 # defaults file for cisco-swingover
+debug_type: false
+change_number: "chg00001"

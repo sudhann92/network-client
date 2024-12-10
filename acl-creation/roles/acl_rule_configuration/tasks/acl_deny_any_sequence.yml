@@ -1,4 +1,4 @@
-  ---
+---
   - name: Extract the sequence number from the matched 'DENY ANY' line and matched the 'DENY ANY' rule
     ansible.builtin.set_fact:
       deny_sequence_number: "{{ (deny_matched_lines | map('regex_search', '^\\s*(\\d+)') | map('int') | list) }}"
@@ -121,7 +121,7 @@
     - name: display the failure message
       ansible.builtin.debug:
         msg: >-
-          This {{inventory_hostname}} switch had some problem kindly check manually
+          This "{{inventory_hostname}}" switch had some problem kindly check manually
 
     - name: store the name of switch which got failed in deny applying rule
       ansible.builtin.set_fact:

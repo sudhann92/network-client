@@ -1,0 +1,106 @@
+---
+  - block:
+    - name: Create a single list with set of ACL Extended rules
+      ansible.builtin.set_fact:
+        __extended_acl_rule: "{{unique_new_acl_rules}}"
+
+          
+    - name: Update the new ACL rule to cfg file for parsing proper format to send data to ios_acl module
+      lineinfile:
+          dest: "parsed_acl_{{inventory_hostname}}.cfg"
+          line: "{% for i in  unique_new_acl_rules %}{{ i + '\n' }}{% endfor %}"
+
+    # - name: Update the new ACL rule to cfg file for parsing proper format to send data to ios_acl module
+    #   local_action:
+    #      module: lineinfile
+    #       dest: "parsed_acl.cfg"
+    #       line: "{% for i in  unique_new_acl_rules %}{{ i + '\n' }}{% endfor %}"
+    #   run_once: true
+
+
+    - name: Parse the ACL new rule for provided configuration to acl module
+      cisco.ios.ios_acls:
+        running_config: "{{ lookup('file', 'parsed_acl_{{inventory_hostname}}.cfg') }}"
+        state: parsed
+      register: _parsed_acl_rule
+      #run_once: true
+
+
+    - name: Merged Extended ACL if type is extended configuration with device configuration
+      cisco.ios.ios_acls:
+          config: "{{ _parsed_acl_rule.parsed }}"
+          state: merged
+      register: _applied_config
+  
+    # - name: Taking new backup after applied ACL rule
+    #   cisco.ios.ios_config:
+    #     backup: yes
+    #     backup_options:
+    #       filename: "/tmp/new_config_{{ inventory_hostname }}.txt"
+    #   register: initial_config
+
+    # - name: Compare the old config and new config 
+    #   ansible.builtin.shell:
+    #     command: "diff /tmp/old_config_{{ inventory_hostname }}.txt /tmp/new_config_{{ inventory_hostname }}.txt"
+    #   register: _show_difference
+
+    # - name: Display the difference between configuration {{inventory_hostname }}
+    #   ansible.builtin.debug:
+    #     msg: >-
+    #         "Differences for {{ inventory_hostname}}"
+    #         "{{ _show_difference.stdout_lines| default('No differences found.') }}"
+    #  ignore_errors: yes
+    when: acl_type == 'extended' and not ping_status.failed and unique_new_acl_rules | length > 0
+
+
+  - block:
+    - name: Create a single list with set of ACL Standard rules 
+      ansible.builtin.set_fact:
+        __standard_acl_rule: "{{unique_new_acl_rules}}"
+
+    - name: Update the new standard ACL rule to cfg file for parsing proper format to send data to ios_acl module
+      lineinfile:
+          dest: "parsed_acl_{{inventory_hostname}}.cfg"
+          line: "{% for i in  __standard_acl_rule %}{{ i + '\n' }}{% endfor %}"
+
+    # - name: Update the new ACL rule to cfg file for parsing proper format to send data to ios_acl module
+    #   local_action:
+    #      module: lineinfile
+    #       dest: "parsed_acl.cfg"
+    #       line: "{% for i in  __extended_acl_rule_add_seq %}{{ i + '\n' }}{% endfor %}"
+    #   run_once: true
+
+    - name: Parse the ACL standard new rule for provided configuration to acl module
+      cisco.ios.ios_acls:
+        running_config: "{{ lookup('file', 'parsed_acl_{{inventory_hostname}}.cfg') }}"
+        state: parsed
+      register: _parsed_acl_rule
+      #run_once: true
+
+
+    - name: Merged standard ACL if type is standard configuration with device configuration
+      cisco.ios.ios_acls:
+          config: "{{ _parsed_acl_rule.parsed }}"
+          state: overridden
+      register: _applied_config
+
+    # - name: Taking new backup after applied ACL rule
+    #   cisco.ios.ios_config:
+    #     backup: yes
+    #     backup_options:
+    #       filename: "/tmp/new_config_{{ inventory_hostname }}.txt"
+    #   register: initial_config
+
+    # - name: Compare the old config and new config 
+    #   ansible.builtin.shell:
+    #     command: "diff /tmp/old_config_{{ inventory_hostname }}.txt /tmp/new_config_{{ inventory_hostname }}.txt"
+    #   register: _show_difference
+
+    # - name: Display the difference between configuration {{inventory_hostname }}
+    #   ansible.builtin.debug:
+    #     msg: >-
+    #         "Differences for {{ inventory_hostname}}"
+    #         "{{ _show_difference.stdout_lines| default('No differences found.') }}"
+    #   ignore_errors: yes
+    when: acl_type == 'standard' and not ping_status.failed and unique_new_acl_rules | length > 0
+      

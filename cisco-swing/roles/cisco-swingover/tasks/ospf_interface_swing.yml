@@ -1,0 +1,72 @@
+---
+#The ios_ospf_interface module is designed for OSPFv2 (IPv4-based OSPF) configurations on Cisco IOS devices, not OSPFv3, 
+#which is used for IPv6 networks. Unfortunately, the module does not currently support OSPFv3-specific settings such as configuring OSPFv3 costs on interfaces.
+
+    - name: Gather OSPF settings on the specified interface
+      cisco.ios.ios_ospf_interfaces:
+        config:
+          - name: "{{ Interface_Tunnel_name }}"
+        state: gathered
+      register: ospf_interface_data
+
+    - name: Debug gathered OSPF interface data
+      debug:
+        var: ospf_interface_data
+
+    - name: Set OSPF process ID and area ID from gathered data
+      set_fact:
+        ospf_process_id: "{{ ospf_interface_data['config'][0]['address_family'][0]['process']['id'] }}"
+        ospf_area_id: "{{ ospf_interface_data['config'][0]['address_family'][0]['process']['area_id'] }}"
+
+#Used the ios_ospf_interface module to apply the cost for the interfaces
+    - name: Configure OSPFv3 cost on the specified interface
+      cisco.ios.ios_ospf_interfaces:
+        config:
+          - name: "{{ interface_name }}"
+            address_family:
+              - afi: ipv6
+                process:
+                  id: "{{ ospf_process_id }}"
+                  area_id: "{{ ospf_area_id }}"
+                cost:
+                  interface_cost: "{{ospf_cost_value}}"  # Define dynamically if needed
+        state: merged
+
+
+    - name: Gather OSPF settings on the specified interface
+      cisco.ios.ios_ospf_interfaces:
+        config:
+          - name: "{{ Interface_Tunnel_name }}"
+        state: gathered
+      register: ospf_interface_new_data
+
+    
+    - name: Based upon Tunnel input assign the value in the variable
+      set_fact:
+        Changed_link_value: "{% if condition_type|lower == 'even' %}{% if ospf_cost_value == '8000' %}Even AGV Changed M1 to Singtel Link{% else %}Even AGV Changed Singtel to M1 Link{% endif %}{% else %}{% if ospf_cost_value == '8000' %}Odd AGV Changed Singtel to M1 Link{% else %}Odd AGVChanged M1 to Singtel Link{% endif %}"
+      delegate_to: localhost
+      run_once: True
+      
+
+
+    # - name: "ReportGeneration: Generating report"
+    #   ansible.builtin.template:
+    #     src: "{{ report_template_name }}"
+    #     dest: "{{tower_job_id}}_ACL_report.html"
+
+    - name: Send email to RE to manually verify from their end
+      community.general.mail:
+            host: <smtp hostname>
+            port: 25
+            subject: "New_ACL_RULE_added_Report_{{change_number}}"
+            subtype: html
+            body: "{{tower_email_body_message }}"
+            to: "{{tower_email_address_to}}" 
+            from: "noreply@ansible.psa"
+            cc: "{{tower_email_address_cc}}"
+            attach: 
+               - "{{change_number}}_ACL_report.txt"
+               - "{{change_number}}_failure_switches_list.txt"
+            #attach: "{{tower_job_id}}_ACL_report.html"
+    delegate_to: localhost
+    run_once: true

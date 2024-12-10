@@ -1,21 +1,22 @@
 ---
-  - name: Execute show ip access-list command for {{ acl_name }} list
-    cisco.ios.ios_command:
-      commands:
-        - show ip access-lists {{ acl_name }}
-    register: _After_show_acl_desired_value
-    ignore_errors: yes
+  - block:
+    - name: Execute show ip access-list command for {{ acl_name }} list
+      cisco.ios.ios_command:
+        commands:
+          - show ip access-lists {{ acl_name }}
+      register: _After_show_acl_desired_value
+      ignore_errors: yes
 
-  - name: Confirm that unique new rules are applied appropirately or not
-    ansible.builtin.fail:
-      msg: "Some unique new rules were not applied correctly on {{ inventory_hostname }}"
-    when: not all(rules in _After_show_acl_desired_value.stdout.splitlines() for rules in unique_new_acl_rules)
+    - name: Confirm that unique new rules are applied appropirately or not
+      ansible.builtin.fail:
+        msg: "Some unique new rules were not applied correctly on {{ inventory_hostname }}"
+      when: not all(rules in _After_show_acl_desired_value.stdout.splitlines() for rules in unique_new_acl_rules)
 
-
-  - name: Completion report
-    ansible.builtin.debug:
-      msg: "Successfully updated ACL {{ acl_name }} on {{ inventory_hostname }} with unique new rules."
-    when: debug_type|bool
+    - name: Completion report
+      ansible.builtin.debug:
+        msg: "Successfully updated ACL {{ acl_name }} on {{ inventory_hostname }} with unique new rules."
+      when: debug_type|bool
+    when: not ping_status.failed
 
   - name: Apply block condition to send email
     block: 

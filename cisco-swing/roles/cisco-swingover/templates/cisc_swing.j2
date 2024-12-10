@@ -1,0 +1,14 @@
+{% for _host in ansible_play_hosts_all %}
+    {% if condition_type is defined and condition_type|lower == "even" %}
+        {% if hostvars[_host]['ospf_interface_new_data']['config'][0]["address_family"][0]["cost"]["interface_cost"] == "8000" %}
+            {{_host}} : {{Singtel_link_value}} : Primary
+        {% else %}
+            {{_host}} : {{M1_link_value}} : Primary
+        {% endif %}
+    {% if condition_type is defined and condition_type|lower == "odd" %}
+       {% if hostvars[_host]['ospf_interface_new_data']['config'][0]["address_family"][0]["cost"]["interface_cost"] == "2000" %}
+            {{_host}} : {{M1_link_value}} : Primary
+        {% else %}
+            {{_host}} : {{Singtel_link_value}} : Primary
+        {% endif %}
+{% endfor %}

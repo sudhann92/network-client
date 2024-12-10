@@ -1,0 +1,71 @@
+---
+  - name: Retrieve current configuration of {{ Interface_Tunnel_name }}
+    cisco.ios.ios_command:
+      commands:
+        - "show running-config | section interface {{ Interface_Tunnel_name }}"
+    register: tunnel_config
+
+  - name: Determine if OSPFv3 cost needs updating
+    set_fact:
+      needs_update: "{{ ('ospfv3 cost ' + ospf_cost_value|string) not in tunnel_config.stdout[0] }}"
+
+  - name: Apply OSPFv3 cost for {{ Interface_Tunnel_name }} if needed and save the configuration
+    cisco.ios.ios_config:
+      lines:
+        - "interface {{ Interface_Tunnel_name }}"
+        - "ospfv3 cost {{ desired_cost }}"
+        - "write memory"
+      when: needs_update
+
+
+  - name: Retrieve New configuration of {{ Interface_Tunnel_name }}
+    cisco.ios.ios_command:
+      commands:
+        - "show running-config | section interface {{ Interface_Tunnel_name }}"
+    register: New_tunnel_config
+
+
+  - name: Extract the updated OSPFv3 cost line
+    set_fact:
+        ospf_cost_line: "{{ (New_tunnel_config.stdout_lines[0] |select('search' , 'ospfv3 cost') | first).split()[-1] }}"
+
+
+  - block:
+    - name: Based upon Tunnel input and condition type(odd or even) assign the value in the variable
+      set_fact:
+        Changed_link_value: >-
+            {%- if condition_type|lower == 'even' -%}
+              {%- if ospf_cost_value == '8000' -%}
+                Even AGV Changed M1 to Singtel Link
+              {%- else -%}
+                Even AGV Changed Singtel to M1 Link
+              {%- endif -%}
+            {%- else -%}
+              {%- if ospf_cost_value == '8000' -%}
+                Odd AGV Changed Singtel to M1 Link
+              {%- else -%}
+                Odd AGV Changed M1 to Singtel Link
+              {%- endif -%}
+            {%- endif -%}
+            
+    - name: "ReportGeneration: Generating report"
+      ansible.builtin.template:
+        src: "cisco_swing_over_report.html.j2"
+        dest: "{{tower_job_id}}_CISCO_SWING_REPORT.html"
+
+    - name: Send email to RE to manually verify from their end
+      community.general.mail:
+            host: <smtp hostname>
+            port: 25
+            subject: "{{Changed_link_value}}_{{change_number}}"
+            subtype: html
+            body: "{{tower_email_body_message }}"
+            to: "{{tower_email_address_to}}" 
+            from: "noreply@ansible.psa"
+            cc: "{{tower_email_address_cc}}"
+            #attach: 
+            #    - "{{change_number}}_ACL_report.txt"
+            #    - "{{change_number}}_failure_switches_list.txt"
+            attach: "{{tower_job_id}}_CISCO_SWING_REPORT.html"
+    delegate_to: localhost
+    run_once: true

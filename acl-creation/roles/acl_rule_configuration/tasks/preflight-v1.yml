@@ -1,0 +1,98 @@
+---
+# If we increase fork value to 20 for this automation
+# For 500 - devices /20 - forks in ansible = 10 batches
+#In parallelism machanism for 10 batches * 5 seconds = 50  seconds only to complete below task
+#Incase if we get 5 host is not reachable we can avoid that host for remaining plays automatically
+  - name: Check the reachability of the devices 
+    wait_for:
+      host: "{{ inventory_hostname }}"
+      port: 22
+      delay: 3
+      timeout: 5
+    delegate_to: localhost
+    register: ping_status
+    ignore_errors: yes
+
+#If the ping test failed is false then below plays will run on that particular host 
+  - block:
+    - name: Execute show ip access-list command for {{ acl_name }} list
+      cisco.ios.ios_command:
+        commands:
+          - show ip access-lists {{ acl_name }}
+      register: _before_show_acl_desired_value
+      ignore_errors: yes
+
+    - name: Set ACL type variable based on command output
+      ansible.builtin.set_fact:
+        acl_type: >-
+          {% if _before_show_acl_desired_value.stdout|length != 0 %}
+          {% if 'extended' in _before_show_acl_desired_value.stdout[0]|lower %}
+          extended
+          {% elif 'standard' in _before_show_acl_desired_value.stdout[0]|lower %}
+          standard
+          {% else %}
+          not_found
+          {% endif %}
+          {% else %}
+          Acl_not_configured
+          {% endif %}
+
+
+    - name: Copy the first line of the access-list output
+      ansible.builtin.copy:
+        dest: "parsed_acl_{{inventory_hostname}}.cfg"
+        content: "{{ _before_show_acl_desired_value.stdout[0] }}"
+
+
+    # - name: Copy the first line of the access-list output
+    #   local_action:
+    #     module: ansible.builtin.copy
+    #     dest: "parsed_acl.cfg"
+    #     content: "{{ _before_show_acl_desired_value.stdout[0] }}"
+    #   run_once: true
+
+
+    # - name: "Gather the current {{ acl_name }} ACL before adding new rule"
+    #   cisco.ios.ios_acls:
+    #     config:
+    #       - afi: ipv4
+    #         acls:
+    #           - name: "{{acl_name}}"
+    #             acl_type: "{{acl_type}}"
+    #     state: gathered
+    #   register: current_gathered_output
+
+
+    # - name: "Delete ACLs (Note: This won't delete the all configured ACLs)"
+    #   cisco.ios.ios_acls:
+    #     config: "{{ current_gathered_output.before }}"
+    #     state: rendered
+    #   register: old_rendered_value
+
+    
+
+    - name: Debug ACL type
+      debug:
+        msg: "ACL Type for {{ inventory_hostname }}: {{ acl_type }}"
+      when: debug_type|bool
+
+
+    - name: Extract lines with 'DENY ANY' Rules in {{acl_name}}
+      ansible.builtin.set_fact:
+          deny_matched_lines: "{{ _before_show_acl_desired_value.stdout.splitlines() | select('search', 'deny.*any') | list }}"
+
+
+    - name: Display the deny matches line 
+      debug:
+          msg: "{{ deny_matched_lines }}"
+      when: debug_type|bool
+
+  - name: Remove existing ACL rules from the new given list
+    ansible.builtin.set_fact:
+      unique_new_acl_rules: "{{ new_acl_rule.splitlines() | difference(_before_show_acl_desired_value.stdout.splitlines()) }}"
+    
+  - name: New Unique rule going to apply for this switches
+    anisble.builtin.debug:
+          msg: "{{unique_new_acl_rules}}"
+    when: debug_type|bool
+  when: not ping_status.failed 

@@ -3,8 +3,8 @@
     wait_for:
       host: "{{ inventory_hostname }}"
       port: 22
-      delay: 5
-      timeout: 10
+      delay: 2
+      timeout: 5
     delegate_to: localhost
     register: ping_status
     ignore_errors: yes
